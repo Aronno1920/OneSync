@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+package sync_engine;
+
+// Sync direction enum
+enum SyncDirection {
+    BIDIRECTIONAL = 0;
+    SOURCE_TO_TARGET = 1;
+    TARGET_TO_SOURCE = 2;
+}
+
+// Conflict resolution strategy
+enum ConflictStrategy {
+    LAST_WRITE_WINS = 0;
+    MANUAL = 1;
+    SKIP = 2;
+}
+
+// Job status enum
+enum JobStatus {
+    IDLE = 0;
+    SCANNING = 1;
+    COMPARING = 2;
+    TRANSFERRING = 3;
+    RESOLVING_CONFLICTS = 4;
+    COMPLETED = 5;
+    FAILED = 6;
+    PAUSED = 7;
+}
+
+// Conflict resolution choice
+enum ConflictResolution {
+    KEEP_SOURCE = 0;
+    KEEP_TARGET = 1;
+    KEEP_BOTH = 2;
+    SKIP = 3;
+}
+
+// File node information
+message FileNode {
+    string path = 1;
+    bool is_directory = 2;
+    int64 size = 3;
+    int64 modified_time = 4;
+    string hash = 5;
+    repeated FileNode children = 6;
+}
+
+// Sync progress information
+message SyncProgress {
+    uint64 files_scanned = 1;
+    uint64 files_transferred = 2;
+    uint64 bytes_transferred = 3;
+    uint64 total_files = 4;
+    uint64 total_bytes = 5;
+    double percentage = 6;
+}
+
+// Conflict information
+message ConflictInfo {
+    string conflict_id = 1;
+    string file_path = 2;
+    FileNode source_version = 3;
+    FileNode target_version = 4;
+    string conflict_reason = 5;
+}
+
+// Job summary
+message JobSummary {
+    string job_id = 1;
+    string source_path = 2;
+    string target_path = 3;
+    JobStatus status = 4;
+    int64 created_at = 5;
+}
+
+// Create job request
+message CreateJobRequest {
+    string source_path = 1;
+    string target_path = 2;
+    SyncDirection direction = 3;
+    ConflictStrategy conflict_strategy = 4;
+    repeated string exclude_patterns = 5;
+    repeated string include_patterns = 6;
+    bool enable_compression = 7;
+    uint32 block_size = 8;
+}
+
+// Create job response
+message CreateJobResponse {
+    string job_id = 1;
+    bool success = 2;
+    string message = 3;
+}
+
+// Start job request
+message StartJobRequest {
+    string job_id = 1;
+}
+
+// Start job response
+message StartJobResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// Stop job request
+message StopJobRequest {
+    string job_id = 1;
+}
+
+// Stop job response
+message StopJobResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// Job status request
+message JobStatusRequest {
+    string job_id = 1;
+}
+
+// Job status response
+message JobStatusResponse {
+    string job_id = 1;
+    JobStatus status = 2;
+    SyncProgress progress = 3;
+    string error_message = 4;
+    int64 start_time = 5;
+    int64 end_time = 6;
+}
+
+// List jobs request
+message ListJobsRequest {
+    // Empty request
+}
+
+// List jobs response
+message ListJobsResponse {
+    repeated JobSummary jobs = 1;
+}
+
+// Resolve conflict request
+message ResolveConflictRequest {
+    string job_id = 1;
+    string conflict_id = 2;
+    ConflictResolution resolution = 3;
+}
+
+// Resolve conflict response
+message ResolveConflictResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// Sync engine service definition
+service SyncEngine {
+    rpc CreateJob(CreateJobRequest) returns (CreateJobResponse);
+    rpc StartJob(StartJobRequest) returns (StartJobResponse);
+    rpc StopJob(StopJobRequest) returns (StopJobResponse);
+    rpc JobStatus(JobStatusRequest) returns (JobStatusResponse);
+    rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+    rpc ResolveConflict(ResolveConflictRequest) returns (ResolveConflictResponse);
+}
