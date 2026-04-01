@@ -5,10 +5,10 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::pin::Pin;
 use tokio::fs;
 use tokio::sync::Semaphore;
-use tracing::{debug, info, warn};
-use walkdir::WalkDir;
+use tracing::{debug, info};
 use memmap2::Mmap;
 use blake3::Hasher;
 
@@ -87,8 +87,10 @@ impl FileScanner {
         Ok(root_node)
     }
 
-    /// Sequential directory scanning
+    /// Sequential directory scanning (non-recursive version)
     async fn scan_sequential(&self, path: &Path) -> SyncResult<FileNode> {
+        debug!("Sequential scan: {}", path.display());
+
         let mut children = Vec::new();
         let mut total_size = 0u64;
 
@@ -111,81 +113,9 @@ impl FileScanner {
                 .map_err(|e| SyncError::Scanner(format!("Failed to get metadata for {}: {}", entry_path.display(), e)))?;
 
             if metadata.is_dir() {
-                let child_node = self.scan_sequential(&entry_path).await?;
-                total_size += child_node.size;
-                children.push(child_node);
-            } else if metadata.is_file() {
-                let file_size = metadata.len();
-                let modified_time = metadata.modified()
-                    .ok()
-                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                    .map(|d| d.as_secs() as i64)
-                    .unwrap_or(0);
-
-                // Compute file hash
-                let hash = self.compute_file_hash(&entry_path, file_size).await?;
-
-                let file_node = FileNode {
-                    path: entry_path.to_string_lossy().to_string(),
-                    is_directory: false,
-                    size: file_size,
-                    modified_time,
-                    hash,
-                    children: Vec::new(),
-                };
-
-                total_size += file_size;
-                children.push(file_node);
-            } else if !self.config.follow_symlinks {
-                debug!("Skipping symlink: {}", entry_path.display());
-            }
-        }
-
-        let metadata = fs::metadata(path).await
-            .map_err(|e| SyncError::Scanner(format!("Failed to get metadata for {}: {}", path.display(), e)))?;
-
-        let modified_time = metadata.modified()
-            .ok()
-            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| d.as_secs() as i64)
-            .unwrap_or(0);
-
-        Ok(FileNode {
-            path: path.to_string_lossy().to_string(),
-            is_directory: true,
-            size: total_size,
-            modified_time,
-            hash: String::new(), // Directories don't have hashes
-            children,
-        })
-    }
-
-    /// Parallel directory scanning
-    async fn scan_parallel(&self, path: &Path) -> SyncResult<FileNode> {
-        let semaphore = Arc::new(Semaphore::new(self.config.max_concurrent_ops));
-        let mut children = Vec::new();
-        let mut total_size = 0u64;
-
-        let mut entries = fs::read_dir(path).await
-            .map_err(|e| SyncError::Scanner(format!("Failed to read directory {}: {}", path.display(), e)))?;
-
-        while let Some(entry) = entries.next_entry().await
-            .map_err(|e| SyncError::Scanner(format!("Failed to read entry: {}", e)))? {
-            
-            let entry_path = entry.path();
-            let file_name = entry.file_name();
-            let file_name_str = file_name.to_string_lossy();
-
-            // Skip hidden files if configured
-            if self.config.skip_hidden && file_name_str.starts_with('.') {
-                continue;
-            }
-
-            let metadata = entry.metadata().await
-                .map_err(|e| SyncError::Scanner(format!("Failed to get metadata for {}: {}", entry_path.display(), e)))?;
-
-            if metadata.is_dir() {
-                let child_node = self.scan_entry_parallel(entry_path.clone(), semaphore.clone()).await?;
+                // Use boxed future for recursion
+                let scan_future = Box::pin(self.scan_sequential(&entry_path));
+                let child_node = scan_future.await?;
                 total_size += child_node.size;
                 children.push(child_node);
             } else if metadata.is_file() {
@@ -234,12 +164,80 @@ impl FileScanner {
         })
     }
 
-    /// Scan a single entry with parallel execution
-    async fn scan_entry_parallel(&self, path: PathBuf, semaphore: Arc<Semaphore>) -> SyncResult<FileNode> {
-        let _permit = semaphore.acquire().await
-            .map_err(|e| SyncError::Scanner(format!("Failed to acquire semaphore: {}", e)))?;
+    /// Parallel directory scanning (non-recursive version)
+    async fn scan_parallel(&self, path: &Path) -> SyncResult<FileNode> {
+        let semaphore = Arc::new(Semaphore::new(self.config.max_concurrent_ops));
+        let mut children = Vec::new();
+        let mut total_size = 0u64;
 
-        self.scan_parallel(&path).await
+        let mut entries = fs::read_dir(path).await
+            .map_err(|e| SyncError::Scanner(format!("Failed to read directory {}: {}", path.display(), e)))?;
+
+        while let Some(entry) = entries.next_entry().await
+            .map_err(|e| SyncError::Scanner(format!("Failed to read entry: {}", e)))? {
+            
+            let entry_path = entry.path();
+            let file_name = entry.file_name();
+            let file_name_str = file_name.to_string_lossy();
+
+            // Skip hidden files if configured
+            if self.config.skip_hidden && file_name_str.starts_with('.') {
+                continue;
+            }
+
+            let metadata = entry.metadata().await
+                .map_err(|e| SyncError::Scanner(format!("Failed to get metadata for {}: {}", entry_path.display(), e)))?;
+
+            if metadata.is_dir() {
+                // Use boxed future for recursion
+                let scan_future = Box::pin(self.scan_parallel(&entry_path));
+                let child_node = scan_future.await?;
+                total_size += child_node.size;
+                children.push(child_node);
+            } else if metadata.is_file() {
+                let file_size = metadata.len();
+                let modified_time = metadata.modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0);
+
+                // Compute file hash
+                let hash = self.compute_file_hash(&entry_path, file_size).await?;
+
+                let file_node = FileNode {
+                    path: entry_path.to_string_lossy().to_string(),
+                    is_directory: false,
+                    size: file_size,
+                    modified_time,
+                    hash,
+                    children: Vec::new(),
+                };
+
+                total_size += file_size;
+                children.push(file_node);
+            } else if !self.config.follow_symlinks {
+                debug!("Skipping symlink: {}", entry_path.display());
+            }
+        }
+
+        let metadata = fs::metadata(path).await
+            .map_err(|e| SyncError::Scanner(format!("Failed to get metadata for {}: {}", path.display(), e)))?;
+
+        let modified_time = metadata.modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+
+        Ok(FileNode {
+            path: path.to_string_lossy().to_string(),
+            is_directory: true,
+            size: total_size,
+            modified_time,
+            hash: String::new(),
+            children,
+        })
     }
 
     /// Compute BLAKE3 hash for a file

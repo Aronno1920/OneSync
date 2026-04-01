@@ -151,20 +151,49 @@ impl Database {
         let job = stmt.query_row(params![job_id], |row| {
             let exclude_patterns: String = row.get(5)?;
             let include_patterns: String = row.get(6)?;
+            
+            let direction_val: i32 = row.get(3)?;
+            let direction = match direction_val {
+                0 => crate::models::sync_job::SyncDirection::Bidirectional,
+                1 => crate::models::sync_job::SyncDirection::SourceToTarget,
+                2 => crate::models::sync_job::SyncDirection::TargetToSource,
+                _ => crate::models::sync_job::SyncDirection::Bidirectional,
+            };
+            
+            let conflict_strategy_val: i32 = row.get(4)?;
+            let conflict_strategy = match conflict_strategy_val {
+                0 => crate::models::sync_job::ConflictStrategy::LastWriteWins,
+                1 => crate::models::sync_job::ConflictStrategy::Manual,
+                2 => crate::models::sync_job::ConflictStrategy::Skip,
+                _ => crate::models::sync_job::ConflictStrategy::LastWriteWins,
+            };
+            
+            let status_val: i32 = row.get(9)?;
+            let status = match status_val {
+                0 => crate::models::sync_job::SyncStatus::Idle,
+                1 => crate::models::sync_job::SyncStatus::Scanning,
+                2 => crate::models::sync_job::SyncStatus::Comparing,
+                3 => crate::models::sync_job::SyncStatus::Transferring,
+                4 => crate::models::sync_job::SyncStatus::ResolvingConflicts,
+                5 => crate::models::sync_job::SyncStatus::Completed,
+                6 => crate::models::sync_job::SyncStatus::Failed,
+                7 => crate::models::sync_job::SyncStatus::Paused,
+                _ => crate::models::sync_job::SyncStatus::Idle,
+            };
 
             Ok(SyncJob {
                 id: row.get(0)?,
                 config: crate::models::sync_job::SyncJobConfig {
                     source_path: row.get(1)?,
                     target_path: row.get(2)?,
-                    direction: unsafe { std::mem::transmute(row.get::<_, i32>(3)?) },
-                    conflict_strategy: unsafe { std::mem::transmute(row.get::<_, i32>(4)?) },
+                    direction,
+                    conflict_strategy,
                     exclude_patterns: serde_json::from_str(&exclude_patterns).unwrap_or_default(),
                     include_patterns: serde_json::from_str(&include_patterns).unwrap_or_default(),
                     enable_compression: row.get(7)?,
                     block_size: row.get(8)?,
                 },
-                status: unsafe { std::mem::transmute(row.get::<_, i32>(9)?) },
+                status,
                 created_at: chrono::DateTime::from_timestamp(row.get(10)?, 0).unwrap(),
                 start_time: row.get::<_, Option<i64>>(11)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
                 end_time: row.get::<_, Option<i64>>(12)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
@@ -193,20 +222,49 @@ impl Database {
         let jobs = stmt.query_map([], |row| {
             let exclude_patterns: String = row.get(5)?;
             let include_patterns: String = row.get(6)?;
+            
+            let direction_val: i32 = row.get(3)?;
+            let direction = match direction_val {
+                0 => crate::models::sync_job::SyncDirection::Bidirectional,
+                1 => crate::models::sync_job::SyncDirection::SourceToTarget,
+                2 => crate::models::sync_job::SyncDirection::TargetToSource,
+                _ => crate::models::sync_job::SyncDirection::Bidirectional,
+            };
+            
+            let conflict_strategy_val: i32 = row.get(4)?;
+            let conflict_strategy = match conflict_strategy_val {
+                0 => crate::models::sync_job::ConflictStrategy::LastWriteWins,
+                1 => crate::models::sync_job::ConflictStrategy::Manual,
+                2 => crate::models::sync_job::ConflictStrategy::Skip,
+                _ => crate::models::sync_job::ConflictStrategy::LastWriteWins,
+            };
+            
+            let status_val: i32 = row.get(9)?;
+            let status = match status_val {
+                0 => crate::models::sync_job::SyncStatus::Idle,
+                1 => crate::models::sync_job::SyncStatus::Scanning,
+                2 => crate::models::sync_job::SyncStatus::Comparing,
+                3 => crate::models::sync_job::SyncStatus::Transferring,
+                4 => crate::models::sync_job::SyncStatus::ResolvingConflicts,
+                5 => crate::models::sync_job::SyncStatus::Completed,
+                6 => crate::models::sync_job::SyncStatus::Failed,
+                7 => crate::models::sync_job::SyncStatus::Paused,
+                _ => crate::models::sync_job::SyncStatus::Idle,
+            };
 
             Ok(SyncJob {
                 id: row.get(0)?,
                 config: crate::models::sync_job::SyncJobConfig {
                     source_path: row.get(1)?,
                     target_path: row.get(2)?,
-                    direction: unsafe { std::mem::transmute(row.get::<_, i32>(3)?) },
-                    conflict_strategy: unsafe { std::mem::transmute(row.get::<_, i32>(4)?) },
+                    direction,
+                    conflict_strategy,
                     exclude_patterns: serde_json::from_str(&exclude_patterns).unwrap_or_default(),
                     include_patterns: serde_json::from_str(&include_patterns).unwrap_or_default(),
                     enable_compression: row.get(7)?,
                     block_size: row.get(8)?,
                 },
-                status: unsafe { std::mem::transmute(row.get::<_, i32>(9)?) },
+                status,
                 created_at: chrono::DateTime::from_timestamp(row.get(10)?, 0).unwrap(),
                 start_time: row.get::<_, Option<i64>>(11)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
                 end_time: row.get::<_, Option<i64>>(12)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),

@@ -52,12 +52,13 @@ impl Default for ProtocolConfig {
 }
 
 /// Network protocol trait
+#[async_trait::async_trait]
 pub trait NetworkProtocol: Send + Sync {
     /// Connect to a remote server
-    async fn connect(&self, addr: SocketAddr) -> NetworkResult<Box<dyn ProtocolConnection>>;
+    async fn connect(&self, addr: SocketAddr) -> NetworkResult<Box<dyn ProtocolConnection + Send + Sync>>;
 
     /// Start a server
-    async fn serve(&self, handler: Arc<dyn ProtocolHandler>) -> NetworkResult<()>;
+    async fn serve(&self, handler: Arc<dyn ProtocolHandler + Send + Sync>) -> NetworkResult<()>;
 }
 
 /// Protocol connection trait
@@ -69,7 +70,7 @@ pub trait ProtocolConnection: Send + Sync {
     /// Receive data
     async fn recv(&mut self, buf: &mut [u8]) -> NetworkResult<usize>;
 
-    /// Close the connection
+    /// Close connection
     async fn close(&mut self) -> NetworkResult<()>;
 }
 
@@ -77,7 +78,7 @@ pub trait ProtocolConnection: Send + Sync {
 #[async_trait::async_trait]
 pub trait ProtocolHandler: Send + Sync {
     /// Handle incoming connection
-    async fn handle_connection(&self, conn: Box<dyn ProtocolConnection>) -> NetworkResult<()>;
+    async fn handle_connection(&self, conn: Box<dyn ProtocolConnection + Send + Sync>) -> NetworkResult<()>;
 }
 
 /// TCP protocol implementation
@@ -94,7 +95,7 @@ impl TcpProtocol {
 
 #[async_trait::async_trait]
 impl NetworkProtocol for TcpProtocol {
-    async fn connect(&self, addr: SocketAddr) -> NetworkResult<Box<dyn ProtocolConnection>> {
+    async fn connect(&self, addr: SocketAddr) -> NetworkResult<Box<dyn ProtocolConnection + Send + Sync>> {
         debug!("Connecting to TCP server: {}", addr);
 
         let stream = tokio::time::timeout(
@@ -108,7 +109,7 @@ impl NetworkProtocol for TcpProtocol {
         Ok(Box::new(TcpConnection { stream }))
     }
 
-    async fn serve(&self, handler: Arc<dyn ProtocolHandler>) -> NetworkResult<()> {
+    async fn serve(&self, handler: Arc<dyn ProtocolHandler + Send + Sync>) -> NetworkResult<()> {
         info!("Starting TCP server on {}", self.config.server_addr);
 
         let listener = TcpListener::bind(self.config.server_addr)
@@ -172,7 +173,7 @@ pub enum ProtocolMessage {
     /// File transfer response
     FileTransferResponse { accepted: bool, offset: u64 },
     /// Data chunk
-    DataChunk { offset: u64, data: Bytes },
+    DataChunk { offset: u64, data: Vec<u8> },
     /// Transfer complete
     TransferComplete { success: bool, message: String },
     /// Error message
@@ -198,7 +199,7 @@ pub struct DefaultProtocolHandler;
 
 #[async_trait::async_trait]
 impl ProtocolHandler for DefaultProtocolHandler {
-    async fn handle_connection(&self, mut conn: Box<dyn ProtocolConnection>) -> NetworkResult<()> {
+    async fn handle_connection(&self, mut conn: Box<dyn ProtocolConnection + Send + Sync>) -> NetworkResult<()> {
         let mut buf = vec![0u8; 8192];
 
         loop {

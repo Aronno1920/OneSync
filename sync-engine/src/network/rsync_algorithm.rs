@@ -284,7 +284,7 @@ impl RsyncAlgorithm {
         }
 
         // Write patched data to target
-        fs::write(target_path, target_data).await
+        tokio::fs::write(target_path, target_data).await
             .map_err(|e| NetworkError::Transfer(format!("Failed to write patched file: {}", e)))?;
 
         Ok(())
