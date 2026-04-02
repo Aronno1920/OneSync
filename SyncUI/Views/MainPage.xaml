@@ -142,13 +142,16 @@
                                            FontAttributes="Bold"
                                            VerticalOptions="Center"
                                            Margin="8,0,0,0"/>
-                                    <Label Grid.Row="0" Grid.Column="2"
-                                           Text="{Binding StatusText}"
-                                           FontSize="12"
-                                           VerticalOptions="Center"
+                                    <Frame Grid.Row="0" Grid.Column="2"
                                            Padding="8,4"
                                            CornerRadius="12"
-                                           BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
+                                           BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                                           HasShadow="False">
+                                        <Label Text="{Binding StatusText}"
+                                               FontSize="12"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"/>
+                                    </Frame>
 
                                     <!-- Paths -->
                                     <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"

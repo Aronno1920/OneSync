@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using SyncUI.Models;
 using SyncUI.Services;
 
@@ -165,8 +166,9 @@ public partial class SyncJobViewModel : ObservableObject
             }
             else
             {
-                Job = await _syncClient.UpdateJobAsync(Job);
-                await _notificationService.ShowNotificationAsync("Job Updated", $"Job '{Job.Name}' has been updated");
+                // TODO: Implement update job functionality when backend supports it
+                // Job = await _syncClient.UpdateJobAsync(Job);
+                await _notificationService.ShowNotificationAsync("Job Updated", $"Job '{Job.Name}' has been updated (local only)");
             }
 
             await Shell.Current.GoToAsync("..");

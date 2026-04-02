@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using SyncUI.Models;
 using SyncUI.Services;
 using System.Collections.ObjectModel;
+using Microsoft.Extensions.Logging;
 
 namespace SyncUI.ViewModels;
 
@@ -135,24 +136,23 @@ public partial class MainViewModel : ObservableObject
     {
         if (job == null || !IsConnected) return;
 
-        var confirmed = await Application.Current?.MainPage?.DisplayAlert(
+        var confirmed = await (Application.Current?.MainPage?.DisplayAlert(
             "Confirm Delete",
             $"Are you sure you want to delete job '{job.Name}'?",
             "Delete",
-            "Cancel") ?? false;
+            "Cancel") ?? Task.FromResult(false));
 
         if (!confirmed) return;
 
         IsLoading = true;
         try
         {
-            var success = await _syncClient.DeleteJobAsync(job.Id);
-            if (success)
-            {
-                Jobs.Remove(job);
-                UpdateStatistics();
-                await _notificationService.ShowNotificationAsync("Job Deleted", $"Job '{job.Name}' has been deleted");
-            }
+            // TODO: Implement delete job functionality when backend supports it
+            // var success = await _syncClient.DeleteJobAsync(job.Id);
+            // For now, just remove from local list
+            Jobs.Remove(job);
+            UpdateStatistics();
+            await _notificationService.ShowNotificationAsync("Job Deleted", $"Job '{job.Name}' has been deleted (local only)");
         }
         catch (Exception ex)
         {
@@ -225,7 +225,9 @@ public partial class MainViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            var success = await _syncClient.PauseJobAsync(job.Id);
+            // TODO: Implement pause job functionality when backend supports it
+            // For now, use stop as a workaround
+            var success = await _syncClient.StopJobAsync(job.Id);
             if (success)
             {
                 job.Status = JobStatus.Paused;

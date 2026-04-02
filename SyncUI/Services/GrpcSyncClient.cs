@@ -10,7 +10,7 @@ namespace SyncUI.Services;
 public class GrpcSyncClient : IDisposable
 {
     private GrpcChannel? _channel;
-    private SyncEngine.SyncEngineClient? _client;
+    private SyncEngine.SyncEngine.SyncEngineClient? _client;
     private readonly string _serverAddress;
     private bool _disposed;
 
@@ -31,14 +31,14 @@ public class GrpcSyncClient : IDisposable
         try
         {
             _channel = GrpcChannel.ForAddress(_serverAddress);
-            _client = new SyncEngine.SyncEngineClient(_channel);
+            _client = new SyncEngine.SyncEngine.SyncEngineClient(_channel);
 
-            // Test connection
-            var healthCheck = await _client.CheckHealthAsync(
-                new Empty(), 
+            // Test connection by listing jobs
+            var testResponse = await _client.ListJobsAsync(
+                new SyncEngine.ListJobsRequest(), 
                 cancellationToken: cancellationToken);
 
-            return healthCheck.Status == "healthy";
+            return true;
         }
         catch (Exception ex)
         {
@@ -65,7 +65,7 @@ public class GrpcSyncClient : IDisposable
         try
         {
             var response = await _client.ListJobsAsync(
-                new Empty(), 
+                new SyncEngine.ListJobsRequest(), 
                 cancellationToken: cancellationToken);
 
             var jobs = new List<SyncJob>();
@@ -83,24 +83,6 @@ public class GrpcSyncClient : IDisposable
         }
     }
 
-    public async Task<SyncJob?> GetJobAsync(string jobId, CancellationToken cancellationToken = default)
-    {
-        if (_client == null)
-            throw new InvalidOperationException("Not connected to sync engine");
-
-        try
-        {
-            var request = new JobIdRequest { JobId = jobId };
-            var response = await _client.GetJobAsync(request, cancellationToken: cancellationToken);
-            return ConvertProtoToSyncJob(response);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to get job: {ex.Message}");
-            throw;
-        }
-    }
-
     public async Task<SyncJob> CreateJobAsync(SyncJob job, CancellationToken cancellationToken = default)
     {
         if (_client == null)
@@ -108,49 +90,28 @@ public class GrpcSyncClient : IDisposable
 
         try
         {
-            var request = ConvertSyncJobToProto(job);
+            var request = ConvertSyncJobToCreateRequest(job);
             var response = await _client.CreateJobAsync(request, cancellationToken: cancellationToken);
-            return ConvertProtoToSyncJob(response);
+            
+            if (!response.Success)
+            {
+                throw new InvalidOperationException($"Failed to create job: {response.Message}");
+            }
+
+            // Get the created job by listing all jobs and finding the new one
+            var jobs = await GetJobsAsync(cancellationToken);
+            var createdJob = jobs.FirstOrDefault(j => j.Id == response.JobId);
+            
+            if (createdJob == null)
+            {
+                throw new InvalidOperationException("Job was created but could not be retrieved");
+            }
+
+            return createdJob;
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Failed to create job: {ex.Message}");
-            throw;
-        }
-    }
-
-    public async Task<SyncJob> UpdateJobAsync(SyncJob job, CancellationToken cancellationToken = default)
-    {
-        if (_client == null)
-            throw new InvalidOperationException("Not connected to sync engine");
-
-        try
-        {
-            var request = ConvertSyncJobToProto(job);
-            var response = await _client.UpdateJobAsync(request, cancellationToken: cancellationToken);
-            return ConvertProtoToSyncJob(response);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to update job: {ex.Message}");
-            throw;
-        }
-    }
-
-    public async Task<bool> DeleteJobAsync(string jobId, CancellationToken cancellationToken = default)
-    {
-        if (_client == null)
-            throw new InvalidOperationException("Not connected to sync engine");
-
-        try
-        {
-            var request = new JobIdRequest { JobId = jobId };
-            var response = await _client.DeleteJobAsync(request, cancellationToken: cancellationToken);
-            return response.Success;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to delete job: {ex.Message}");
             throw;
         }
     }
@@ -162,7 +123,7 @@ public class GrpcSyncClient : IDisposable
 
         try
         {
-            var request = new JobIdRequest { JobId = jobId };
+            var request = new SyncEngine.StartJobRequest { JobId = jobId };
             var response = await _client.StartJobAsync(request, cancellationToken: cancellationToken);
             return response.Success;
         }
@@ -180,7 +141,7 @@ public class GrpcSyncClient : IDisposable
 
         try
         {
-            var request = new JobIdRequest { JobId = jobId };
+            var request = new SyncEngine.StopJobRequest { JobId = jobId };
             var response = await _client.StopJobAsync(request, cancellationToken: cancellationToken);
             return response.Success;
         }
@@ -191,122 +152,79 @@ public class GrpcSyncClient : IDisposable
         }
     }
 
-    public async Task<bool> PauseJobAsync(string jobId, CancellationToken cancellationToken = default)
+    public async Task<SyncJob?> GetJobStatusAsync(string jobId, CancellationToken cancellationToken = default)
     {
         if (_client == null)
             throw new InvalidOperationException("Not connected to sync engine");
 
         try
         {
-            var request = new JobIdRequest { JobId = jobId };
-            var response = await _client.PauseJobAsync(request, cancellationToken: cancellationToken);
+            var request = new SyncEngine.JobStatusRequest { JobId = jobId };
+            var response = await _client.JobStatusAsync(request, cancellationToken: cancellationToken);
+            
+            // Create a SyncJob from the status response
+            var job = new SyncJob
+            {
+                Id = response.JobId,
+                Status = (JobStatus)response.Status,
+                Progress = response.Progress.Percentage,
+                ErrorMessage = string.IsNullOrEmpty(response.ErrorMessage) ? null : response.ErrorMessage
+            };
+
+            return job;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to get job status: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<bool> ResolveConflictAsync(string jobId, string conflictId, SyncEngine.ConflictResolution resolution, CancellationToken cancellationToken = default)
+    {
+        if (_client == null)
+            throw new InvalidOperationException("Not connected to sync engine");
+
+        try
+        {
+            var request = new SyncEngine.ResolveConflictRequest
+            {
+                JobId = jobId,
+                ConflictId = conflictId,
+                Resolution = (SyncEngine.ConflictResolution)resolution
+            };
+            var response = await _client.ResolveConflictAsync(request, cancellationToken: cancellationToken);
             return response.Success;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to pause job: {ex.Message}");
+            Debug.WriteLine($"Failed to resolve conflict: {ex.Message}");
             throw;
         }
     }
 
-    public async Task<List<FileNode>> GetJobFilesAsync(string jobId, CancellationToken cancellationToken = default)
-    {
-        if (_client == null)
-            throw new InvalidOperationException("Not connected to sync engine");
-
-        try
-        {
-            var request = new JobIdRequest { JobId = jobId };
-            var response = await _client.ListJobFilesAsync(request, cancellationToken: cancellationToken);
-
-            var files = new List<FileNode>();
-            foreach (var fileProto in response.Files)
-            {
-                files.Add(ConvertProtoToFileNode(fileProto));
-            }
-
-            return files;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to get job files: {ex.Message}");
-            throw;
-        }
-    }
-
-    public async IAsyncEnumerable<SyncEngine.StreamSyncProgressResponse> StreamSyncProgressAsync(
-        string jobId,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        if (_client == null)
-            throw new InvalidOperationException("Not connected to sync engine");
-
-        var request = new JobIdRequest { JobId = jobId };
-        using var call = _client.StreamSyncProgress(request, cancellationToken: cancellationToken);
-
-        await foreach (var update in call.ResponseStream.ReadAllAsync(cancellationToken))
-        {
-            SyncProgress?.Invoke(this, new SyncProgressEventArgs
-            {
-                JobId = jobId,
-                TotalFiles = update.TotalFiles,
-                SyncedFiles = update.SyncedFiles,
-                FailedFiles = update.FailedFiles,
-                TotalBytes = update.TotalBytes,
-                TransferredBytes = update.TransferredBytes,
-                CurrentFile = update.CurrentFile,
-                Progress = update.Progress
-            });
-
-            yield return update;
-        }
-    }
-
-    private static SyncJob ConvertProtoToSyncJob(SyncEngine.SyncJob proto)
+    private static SyncJob ConvertProtoToSyncJob(SyncEngine.JobSummary proto)
     {
         return new SyncJob
         {
-            Id = proto.Id,
-            Name = proto.Name,
+            Id = proto.JobId,
             SourcePath = proto.SourcePath,
-            DestinationPath = proto.DestinationPath,
-            Direction = (SyncDirection)proto.Direction,
-            Mode = (SyncMode)proto.Mode,
+            DestinationPath = proto.TargetPath,
             Status = (JobStatus)proto.Status,
-            IsEnabled = proto.IsEnabled,
-            LastSyncTime = proto.LastSyncTime.ToDateTime(),
-            SyncInterval = TimeSpan.FromSeconds(proto.SyncIntervalSeconds),
-            TotalFiles = proto.TotalFiles,
-            SyncedFiles = proto.SyncedFiles,
-            FailedFiles = proto.FailedFiles,
-            TotalBytes = proto.TotalBytes,
-            TransferredBytes = proto.TransferredBytes,
-            Progress = proto.Progress,
-            ErrorMessage = string.IsNullOrEmpty(proto.ErrorMessage) ? null : proto.ErrorMessage
+            LastSyncTime = DateTimeOffset.FromUnixTimeSeconds(proto.CreatedAt).DateTime
         };
     }
 
-    private static SyncEngine.SyncJob ConvertSyncJobToProto(SyncJob job)
+    private static SyncEngine.CreateJobRequest ConvertSyncJobToCreateRequest(SyncJob job)
     {
-        return new SyncEngine.SyncJob
+        return new SyncEngine.CreateJobRequest
         {
-            Id = job.Id,
-            Name = job.Name,
             SourcePath = job.SourcePath,
-            DestinationPath = job.DestinationPath,
+            TargetPath = job.DestinationPath,
             Direction = (SyncEngine.SyncDirection)job.Direction,
-            Mode = (SyncEngine.SyncMode)job.Mode,
-            Status = (SyncEngine.JobStatus)job.Status,
-            IsEnabled = job.IsEnabled,
-            LastSyncTime = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(job.LastSyncTime),
-            SyncIntervalSeconds = (long)job.SyncInterval.TotalSeconds,
-            TotalFiles = job.TotalFiles,
-            SyncedFiles = job.SyncedFiles,
-            FailedFiles = job.FailedFiles,
-            TotalBytes = job.TotalBytes,
-            TransferredBytes = job.TransferredBytes,
-            Progress = job.Progress,
-            ErrorMessage = job.ErrorMessage ?? string.Empty
+            ConflictStrategy = SyncEngine.ConflictStrategy.LastWriteWins,
+            EnableCompression = true,
+            BlockSize = 65536 // 64KB default block size
         };
     }
 
@@ -314,16 +232,11 @@ public class GrpcSyncClient : IDisposable
     {
         return new FileNode
         {
-            Id = proto.Id,
-            Name = proto.Name,
             Path = proto.Path,
-            RelativePath = proto.RelativePath,
             IsDirectory = proto.IsDirectory,
             Size = proto.Size,
-            ModifiedTime = proto.ModifiedTime.ToDateTime(),
-            Hash = proto.Hash,
-            Status = (FileSyncStatus)proto.Status,
-            ConflictStatus = (FileConflictStatus)proto.ConflictStatus
+            ModifiedTime = DateTimeOffset.FromUnixTimeSeconds(proto.ModifiedTime).DateTime,
+            Hash = proto.Hash
         };
     }
 

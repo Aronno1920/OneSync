@@ -198,15 +198,18 @@
                                    Margin="8,2,0,0"/>
 
                             <!-- Status Badge -->
-                            <Label Grid.Row="2" Grid.Column="2"
-                                   Text="{Binding StatusText}"
-                                   FontSize="10"
-                                   VerticalOptions="Center"
+                            <Frame Grid.Row="2" Grid.Column="2"
                                    Padding="6,2"
                                    CornerRadius="8"
                                    BackgroundColor="{Binding Status, Converter={StaticResource FileStatusToColorConverter}}"
-                                   TextColor="White"
-                                   Margin="8,2,0,0"/>
+                                   Margin="8,2,0,0"
+                                   HasShadow="False">
+                                <Label Text="{Binding StatusText}"
+                                       FontSize="10"
+                                       VerticalOptions="Center"
+                                       TextColor="White"
+                                       HorizontalOptions="Center"/>
+                            </Frame>
 
                             <!-- Conflict Warning -->
                             <Label Grid.Row="1" Grid.Column="0"

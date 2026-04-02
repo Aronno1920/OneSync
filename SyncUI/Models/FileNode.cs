@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 
 namespace SyncUI.Models;
@@ -152,7 +153,7 @@ public class FileNode : INotifyPropertyChanged
 
     private static string GetFileIcon(string fileName)
     {
-        string extension = Path.GetExtension(fileName).ToLowerInvariant();
+        string extension = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
         return extension switch
         {
             ".txt" or ".log" or ".md" => "📄",

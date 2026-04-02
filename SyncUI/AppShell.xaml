@@ -39,17 +39,11 @@
     </FlyoutItem>
 
     <MenuItem Text="Settings"
-              IconImageSource="settings.png">
-        <MenuItem.Command>
-            <Command/>
-        </MenuItem.Command>
-    </MenuItem>
+              IconImageSource="settings.png"
+              Command="{Binding SettingsCommand}"/>
 
     <MenuItem Text="About"
-              IconImageSource="info.png">
-        <MenuItem.Command>
-            <Command/>
-        </MenuItem.Command>
-    </MenuItem>
+              IconImageSource="info.png"
+              Command="{Binding AboutCommand}"/>
 
 </Shell>

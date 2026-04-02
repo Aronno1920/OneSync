@@ -33,7 +33,7 @@ enum ConflictResolution {
     KEEP_SOURCE = 0;
     KEEP_TARGET = 1;
     KEEP_BOTH = 2;
-    SKIP = 3;
+    CONFLICT_SKIP = 3;
 }
 
 // File node information

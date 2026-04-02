@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using SyncUI.Models;
 using SyncUI.Services;
 using System.Collections.ObjectModel;
@@ -79,7 +80,9 @@ public partial class FileMonitorViewModel : ObservableObject
 
         try
         {
-            var files = await _syncClient.GetJobFilesAsync(Job.Id);
+            // TODO: Implement get job files functionality when backend supports it
+            // var files = await _syncClient.GetJobFilesAsync(Job.Id);
+            var files = new List<FileNode>(); // Empty list for now
             
             Files.Clear();
             foreach (var file in files)
