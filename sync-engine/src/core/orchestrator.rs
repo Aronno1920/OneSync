@@ -6,9 +6,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::RwLock;
 use tracing::{info, error, debug};
-use uuid::Uuid;
 
 use crate::models::sync_job::{SyncJob, SyncJobConfig, SyncStatus, ConflictResolution};
 use crate::models::file_node::FileNode;
@@ -107,8 +106,8 @@ impl SyncOrchestrator {
         job.start_time = Some(chrono::Utc::now());
         job.error_message = None;
 
-        // Drop the write lock before starting the async task
-        let job_id = job_id.to_string();
+        // Execute sync job synchronously (simplified for testing)
+        let job_id_clone = job_id.clone();
         let jobs_ref = self.jobs.clone();
         let scanner = self.scanner.clone();
         let differ = self.differ.clone();
@@ -116,19 +115,19 @@ impl SyncOrchestrator {
         let metadata_store = self.metadata_store.clone();
         let journal = self.journal.clone();
 
-        tokio::spawn(async move {
-            if let Err(e) = Self::execute_sync_job(
-                job_id,
-                jobs_ref,
-                scanner,
-                differ,
-                transfer_engine,
-                metadata_store,
-                journal,
-            ).await {
-                error!("Sync job {} failed: {}", job_id, e);
-            }
-        });
+        if let Err(e) = Self::execute_sync_job(
+            job_id_clone,
+            jobs_ref,
+            scanner,
+            differ,
+            transfer_engine,
+            metadata_store,
+            journal,
+        ).await {
+            error!("Sync job {} failed: {}", job_id_clone, e);
+            job.error_message = Some(e.to_string());
+            job.status = SyncStatus::Failed;
+        }
 
         Ok(())
     }

@@ -201,7 +201,7 @@ impl ChangeJournal {
              FROM change_journal WHERE job_id = ?1 GROUP BY change_type"
         ).map_err(|e| StorageError::Database(format!("Failed to prepare statement: {}", e)))?;
 
-        let results = stmt.query_map(params![job_id], |row| {
+        let results: Vec<(String, i64)> = stmt.query_map(params![job_id], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
         }).map_err(|e| StorageError::Database(format!("Failed to query changes by type: {}", e)))?
             .collect::<Result<Vec<_>, _>>()

@@ -49,18 +49,18 @@ pub struct FileScanner {
 
 impl FileScanner {
     /// Create a new file scanner
-    pub fn new(metadata_store: Arc<MetadataStore>) -> Self {
+    pub fn new(metadata_store: MetadataStore) -> Self {
         Self {
             config: ScannerConfig::default(),
-            metadata_store,
+            metadata_store: Arc::new(metadata_store),
         }
     }
 
     /// Create a new file scanner with custom config
-    pub fn with_config(metadata_store: Arc<MetadataStore>, config: ScannerConfig) -> Self {
+    pub fn with_config(metadata_store: MetadataStore, config: ScannerConfig) -> Self {
         Self {
             config,
-            metadata_store,
+            metadata_store: Arc::new(metadata_store),
         }
     }
 

@@ -56,7 +56,7 @@ impl Default for WatcherConfig {
 #[derive(Clone)]
 pub struct FileSystemWatcher {
     config: WatcherConfig,
-    watchers: Arc<RwLock<HashMap<String, RecommendedWatcher>>>,
+    mut watchers: Arc<RwLock<HashMap<String, RecommendedWatcher>>>,
     event_tx: Arc<mpsc::UnboundedSender<FsEvent>>,
     event_rx: Arc<RwLock<Option<mpsc::UnboundedReceiver<FsEvent>>>>,
 }

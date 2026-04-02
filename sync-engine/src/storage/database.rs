@@ -71,7 +71,7 @@ fn migrations() -> Migrations<'static> {
 /// SQLite database for persistent storage
 #[derive(Clone)]
 pub struct Database {
-    conn: Arc<RwLock<Connection>>,
+    pub conn: Arc<RwLock<Connection>>,
     path: String,
 }
 

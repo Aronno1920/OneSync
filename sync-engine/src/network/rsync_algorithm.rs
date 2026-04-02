@@ -3,7 +3,6 @@
 //! This module implements the rsync algorithm for efficient delta transfer,
 //! using rolling checksums and block matching to minimize data transfer.
 
-use std::collections::HashMap;
 use std::path::Path;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -22,7 +21,7 @@ pub struct RsyncConfig {
     pub block_size: usize,
     /// Use rolling checksum
     pub use_rolling_checksum: bool,
-    /// Hash algorithm
+    /// Hash algorithm to use
     pub hash_algorithm: HashAlgorithm,
 }
 
@@ -111,10 +110,13 @@ impl RsyncAlgorithm {
                 HashAlgorithm::Blake3 => {
                     let mut hasher = Hasher::new();
                     hasher.update(block_data);
-                    hasher.finalize().to_vec()
+                    hasher.finalize().as_bytes().to_vec()
                 }
                 HashAlgorithm::Xxh3 => {
-                    xxh3_64(block_data).to_le_bytes().to_vec()
+                    let mut hash = [0u8; 32];
+                    let xxhash = xxh3_64(block_data).to_le_bytes();
+                    hash[..8].copy_from_slice(&xxhash);
+                    hash.to_vec()
                 }
             };
 
@@ -150,10 +152,13 @@ impl RsyncAlgorithm {
                 HashAlgorithm::Blake3 => {
                     let mut hasher = Hasher::new();
                     hasher.update(block_data);
-                    hasher.finalize().to_vec()
+                    hasher.finalize().as_bytes().to_vec()
                 }
                 HashAlgorithm::Xxh3 => {
-                    xxh3_64(block_data).to_le_bytes().to_vec()
+                    let mut hash = [0u8; 32];
+                    let xxhash = xxh3_64(block_data).to_le_bytes();
+                    hash[..8].copy_from_slice(&xxhash);
+                    hash.to_vec()
                 }
             };
 
@@ -220,25 +225,25 @@ impl RsyncAlgorithm {
                 HashAlgorithm::Blake3 => {
                     let mut hasher = Hasher::new();
                     hasher.update(block_data);
-                    hasher.finalize().into()
+                    hasher.finalize().as_bytes().to_vec()
                 }
                 HashAlgorithm::Xxh3 => {
                     let mut hash = [0u8; 32];
                     let xxhash = xxh3_64(block_data).to_le_bytes();
                     hash[..8].copy_from_slice(&xxhash);
-                    hash
+                    hash.to_vec()
                 }
             };
 
             // Check if block matches target
-            let block_matches = i < target_hashes.len() && hash == target_hashes[i];
+            let block_matches = i < target_hashes.len() && &hash[..hash_size] == target_hashes[i];
 
             if !block_matches {
                 blocks.push(BlockInfo {
                     index: i as u64,
                     offset: start as u64,
                     size: end - start,
-                    hash,
+                    hash: hash.try_into().unwrap_or([0u8; 32]),
                 });
                 total_bytes += (end - start) as u64;
             }

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:SyncUI.ViewModels"
+             xmlns:models="clr-namespace:SyncUI.Models"
+             x:Class="SyncUI.Views.FileListView"
+             x:DataType="viewmodels:FileMonitorViewModel"
+             Title="File Monitor">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+        <!-- Header -->
+        <Frame Grid.Row="0"
+               BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
+               Padding="16"
+               HasShadow="True">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button Grid.Column="0"
+                        Text="←"
+                        Command="{Binding RefreshFilesCommand}"
+                        WidthRequest="40"
+                        HeightRequest="40"
+                        CornerRadius="20"
+                        Padding="0"
+                        BackgroundColor="Transparent"
+                        TextColor="White"
+                        FontSize="20"/>
+                <Label Grid.Column="1"
+                       Text="File Monitor"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       VerticalOptions="Center"
+                       HorizontalOptions="Center"/>
+                <ActivityIndicator Grid.Column="2"
+                                   IsRunning="{Binding IsLoading}"
+                                   Color="White"
+                                   VerticalOptions="Center"/>
+            </Grid>
+        </Frame>
+
+        <!-- Job Info -->
+        <Frame Grid.Row="1"
+               Padding="12"
+               Margin="0,8,0,8"
+               HasShadow="False"
+               BackgroundColor="{AppThemeBinding Light={StaticResource Secondary}, Dark={StaticResource SecondaryDark}}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Label Grid.Column="0"
+                       Text="📁"
+                       FontSize="18"
+                       VerticalOptions="Center"/>
+                <Label Grid.Column="1"
+                       Text="{Binding Job.Name}"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       VerticalOptions="Center"
+                       Margin="8,0,0,0"/>
+                <Label Grid.Column="2"
+                       Text="{Binding TotalFilesCount, StringFormat='{0} files'}"
+                       FontSize="12"
+                       VerticalOptions="Center"
+                       FontAttributes="Italic"/>
+            </Grid>
+        </Frame>
+
+        <!-- Filters -->
+        <Frame Grid.Row="2"
+               Padding="12"
+               Margin="0,0,0,8"
+               HasShadow="True"
+               CornerRadius="12">
+            <StackLayout Spacing="8">
+                <!-- Search -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <Entry Grid.Column="0"
+                           Text="{Binding SearchText}"
+                           Placeholder="Search files..."
+                           FontSize="14"
+                           Margin="0,0,8,0"/>
+                    <Button Grid.Column="1"
+                            Text="🔍"
+                            Command="{Binding ApplyFiltersCommand}"
+                            WidthRequest="40"
+                            HeightRequest="40"
+                            CornerRadius="8"
+                            Padding="0"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
+                            TextColor="White"/>
+                </Grid>
+
+                <!-- Filter Options -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <Picker Grid.Column="0"
+                            ItemsSource="{Binding AvailableStatusFilters}"
+                            SelectedItem="{Binding FilterStatus}"
+                            Title="Filter by status"
+                            FontSize="14"
+                            Margin="0,0,8,0"/>
+                    <CheckBox Grid.Column="1"
+                              IsChecked="{Binding ShowOnlyConflicts}"
+                              VerticalOptions="Center"/>
+                    <Label Grid.Column="1"
+                           Text="Conflicts only"
+                           FontSize="12"
+                           VerticalOptions="Center"
+                           Margin="32,0,0,0"/>
+                </Grid>
+
+                <!-- Statistics -->
+                <Grid ColumnDefinitions="*,*,*"
+                      ColumnSpacing="8"
+                      Margin="0,8,0,0">
+                    <Frame Grid.Column="0"
+                           Padding="8"
+                           BackgroundColor="{AppThemeBinding Light=#F0F0F0, Dark=#2D2D2D}"
+                           CornerRadius="8">
+                        <StackLayout Spacing="2">
+                            <Label Text="Total"
+                                   FontSize="10"
+                                   TextColor="Gray"/>
+                            <Label Text="{Binding TotalFilesCount}"
+                                   FontSize="14"
+                                   FontAttributes="Bold"/>
+                        </StackLayout>
+                    </Frame>
+                    <Frame Grid.Column="1"
+                           Padding="8"
+                           BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B5E20}"
+                           CornerRadius="8">
+                        <StackLayout Spacing="2">
+                            <Label Text="Filtered"
+                                   FontSize="10"
+                                   TextColor="Gray"/>
+                            <Label Text="{Binding FilteredFilesCount}"
+                                   FontSize="14"
+                                   FontAttributes="Bold"/>
+                        </StackLayout>
+                    </Frame>
+                    <Frame Grid.Column="2"
+                           Padding="8"
+                           BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#0D47A1}"
+                           CornerRadius="8">
+                        <StackLayout Spacing="2">
+                            <Label Text="Size"
+                                   FontSize="10"
+                                   TextColor="Gray"/>
+                            <Label Text="{Binding TotalSizeFormatted}"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   LineBreakMode="TailTruncation"/>
+                        </StackLayout>
+                    </Frame>
+                </Grid>
+            </StackLayout>
+        </Frame>
+
+        <!-- File List -->
+        <CollectionView Grid.Row="3"
+                        ItemsSource="{Binding FilteredFiles}"
+                        SelectionMode="None"
+                        Margin="16,0,16,16">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:FileNode">
+                    <Frame Padding="12"
+                           Margin="0,0,0,8"
+                           CornerRadius="8"
+                           HasShadow="True"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                        <Grid RowDefinitions="Auto,Auto,Auto"
+                              ColumnDefinitions="Auto,*,Auto">
+                            <!-- File Icon and Name -->
+                            <Label Grid.Row="0" Grid.Column="0"
+                                   Text="{Binding Icon}"
+                                   FontSize="24"
+                                   VerticalOptions="Center"/>
+                            <Label Grid.Row="0" Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   VerticalOptions="Center"
+                                   LineBreakMode="TailTruncation"
+                                   Margin="8,0,0,0"/>
+                            <CheckBox Grid.Row="0" Grid.Column="2"
+                                      IsChecked="{Binding IsSelected}"
+                                      VerticalOptions="Center"/>
+
+                            <!-- Path and Size -->
+                            <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                   Text="{Binding RelativePath}"
+                                   FontSize="12"
+                                   TextColor="Gray"
+                                   LineBreakMode="TailTruncation"
+                                   Margin="8,2,0,0"/>
+                            <Label Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                                   Text="{Binding SizeFormatted}"
+                                   FontSize="12"
+                                   TextColor="Gray"
+                                   Margin="8,2,0,0"/>
+
+                            <!-- Status Badge -->
+                            <Label Grid.Row="2" Grid.Column="2"
+                                   Text="{Binding StatusText}"
+                                   FontSize="10"
+                                   VerticalOptions="Center"
+                                   Padding="6,2"
+                                   CornerRadius="8"
+                                   BackgroundColor="{Binding Status, Converter={StaticResource FileStatusToColorConverter}}"
+                                   TextColor="White"
+                                   Margin="8,2,0,0"/>
+
+                            <!-- Conflict Warning -->
+                            <Label Grid.Row="1" Grid.Column="0"
+                                   Text="⚠️"
+                                   FontSize="16"
+                                   IsVisible="{Binding HasConflicts}"
+                                   VerticalOptions="Center"/>
+
+                            <!-- Action Buttons -->
+                            <FlexLayout Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                                        JustifyContent="SpaceBetween"
+                                        Margin="0,8,0,0"
+                                        IsVisible="{Binding HasConflicts}">
+                                <Button Text="🔧 Resolve"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:FileMonitorViewModel}}, Path=ResolveConflictCommand}"
+                                        CommandParameter="{Binding}"
+                                        HeightRequest="32"
+                                        CornerRadius="16"
+                                        Padding="8,0"
+                                        FontSize="12"
+                                        BackgroundColor="#FF9800"
+                                        TextColor="White"/>
+                                <Button Text="ℹ️ Details"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:FileMonitorViewModel}}, Path=ViewFileDetailsCommand}"
+                                        CommandParameter="{Binding}"
+                                        HeightRequest="32"
+                                        CornerRadius="16"
+                                        Padding="8,0"
+                                        FontSize="12"
+                                        BackgroundColor="#2196F3"
+                                        TextColor="White"/>
+                            </FlexLayout>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.EmptyView>
+                <StackLayout Padding="32" Spacing="16">
+                    <Label Text="📭"
+                           FontSize="48"
+                           HorizontalOptions="Center"/>
+                    <Label Text="No files found"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"
+                           TextColor="Gray"/>
+                    <Label Text="Try adjusting your filters or search terms"
+                           FontSize="14"
+                           HorizontalOptions="Center"
+                           TextColor="Gray"/>
+                </StackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
+    </Grid>
+</ContentPage>
