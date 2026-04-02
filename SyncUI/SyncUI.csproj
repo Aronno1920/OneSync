@@ -10,14 +10,6 @@
     <SingleProject>true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    
-    <!-- Self-contained deployment to include Windows App SDK runtime -->
-    <SelfContained>true</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <PublishSingleFile>false</PublishSingleFile>
-    
-    <!-- Bootstrap Windows App SDK at runtime -->
-    <WindowsAppSDKBootstrap>true</WindowsAppSDKBootstrap>
 
     <!-- Display name -->
     <ApplicationTitle>OneSync</ApplicationTitle>
