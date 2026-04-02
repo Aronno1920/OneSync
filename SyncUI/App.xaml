@@ -5,7 +5,10 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- MUST load Colors FIRST -->
                 <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+
+                <!-- Then Styles -->
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

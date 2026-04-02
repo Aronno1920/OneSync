@@ -12,6 +12,7 @@ public class Program
         global::Microsoft.UI.Xaml.Application.Start((p) =>
         {
             var context = new MauiWinUIApplicationContext();
+            _ = context; // Prevent garbage collection
         });
     }
 }

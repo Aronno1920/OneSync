@@ -16,7 +16,6 @@
 
     <!-- Label Styles -->
     <Style x:Key="BaseLabelStyle" TargetType="Label">
-        <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}"/>
         <Setter Property="LineBreakMode" Value="WordWrap"/>
     </Style>
@@ -44,7 +43,6 @@
     <Style x:Key="BaseButtonStyle" TargetType="Button">
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"/>
         <Setter Property="TextColor" Value="{StaticResource White}"/>
-        <Setter Property="FontFamily" Value="OpenSansSemibold"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="14,10"/>
@@ -91,7 +89,6 @@
     <Style x:Key="BaseEntryStyle" TargetType="Entry">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"/>
         <Setter Property="BackgroundColor" Value="Transparent"/>
-        <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource Gray400}, Dark={StaticResource Gray500Dark}}"/>
         <Setter Property="MinimumHeightRequest" Value="44"/>
@@ -102,7 +99,6 @@
     <Style x:Key="BaseEditorStyle" TargetType="Editor">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"/>
         <Setter Property="BackgroundColor" Value="Transparent"/>
-        <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource Gray400}, Dark={StaticResource Gray500Dark}}"/>
         <Setter Property="MinimumHeightRequest" Value="100"/>
@@ -150,7 +146,6 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"/>
         <Setter Property="TitleColor" Value="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}"/>
         <Setter Property="BackgroundColor" Value="Transparent"/>
-        <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="MinimumHeightRequest" Value="44"/>
         <Setter Property="Margin" Value="0,8"/>

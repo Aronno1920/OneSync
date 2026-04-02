@@ -17,33 +17,28 @@
         </Grid>
     </Shell.FlyoutHeader>
 
-    <FlyoutItem Title="Dashboard"
-                Icon="dashboard.png">
+    <FlyoutItem Title="Dashboard">
         <ShellContent Title="Dashboard"
                       Route="MainPage"
                       ContentTemplate="{DataTemplate views:MainPage}"/>
     </FlyoutItem>
 
-    <FlyoutItem Title="Jobs"
-                Icon="jobs.png">
+    <FlyoutItem Title="Jobs">
         <ShellContent Title="Jobs"
                       Route="SyncJobPage"
                       ContentTemplate="{DataTemplate views:SyncJobPage}"/>
     </FlyoutItem>
 
-    <FlyoutItem Title="Files"
-                Icon="files.png">
+    <FlyoutItem Title="Files">
         <ShellContent Title="Files"
                       Route="FileListView"
                       ContentTemplate="{DataTemplate views:FileListView}"/>
     </FlyoutItem>
 
     <MenuItem Text="Settings"
-              IconImageSource="settings.png"
               Command="{Binding SettingsCommand}"/>
 
     <MenuItem Text="About"
-              IconImageSource="info.png"
               Command="{Binding AboutCommand}"/>
 
 </Shell>
