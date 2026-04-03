@@ -4,11 +4,10 @@
 //! file metadata, and change journals.
 
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use rusqlite::{Connection, params, Result as SqliteResult};
 use rusqlite_migration::{Migrations, M};
 use tracing::{info, error, debug};
-use tokio::sync::RwLock;
 
 use crate::models::sync_job::SyncJob;
 use crate::models::file_node::FileNode;
@@ -71,7 +70,7 @@ fn migrations() -> Migrations<'static> {
 /// SQLite database for persistent storage
 #[derive(Clone)]
 pub struct Database {
-    pub conn: Arc<RwLock<Connection>>,
+    pub conn: Arc<Mutex<Connection>>,
     path: String,
 }
 
@@ -80,18 +79,18 @@ impl Database {
     pub async fn new(path: &str) -> StorageResult<Self> {
         info!("Opening database: {}", path);
 
-        let conn = Connection::open(path)
+        let mut conn = Connection::open(path)
             .map_err(|e| StorageError::Database(format!("Failed to open database: {}", e)))?;
 
         // Run migrations
         migrations()
-            .to_latest(&conn)
+            .to_latest(&mut conn)
             .map_err(|e| StorageError::Database(format!("Failed to run migrations: {}", e)))?;
 
         info!("Database initialized successfully");
 
         Ok(Self {
-            conn: Arc::new(RwLock::new(conn)),
+            conn: Arc::new(Mutex::new(conn)),
             path: path.to_string(),
         })
     }
@@ -100,7 +99,7 @@ impl Database {
     pub async fn save_job(&self, job: &SyncJob) -> StorageResult<()> {
         debug!("Saving job: {}", job.id);
 
-        let conn = self.conn.read().await;
+        let conn = self.conn.lock().unwrap();
 
         let exclude_patterns = serde_json::to_string(&job.config.exclude_patterns)
             .map_err(|e| StorageError::Serialization(format!("Failed to serialize exclude patterns: {}", e)))?;
@@ -139,7 +138,7 @@ impl Database {
     pub async fn load_job(&self, job_id: &str) -> StorageResult<SyncJob> {
         debug!("Loading job: {}", job_id);
 
-        let conn = self.conn.read().await;
+        let conn = self.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT id, source_path, target_path, direction, conflict_strategy,
@@ -210,7 +209,7 @@ impl Database {
     pub async fn list_jobs(&self) -> StorageResult<Vec<SyncJob>> {
         debug!("Listing all jobs");
 
-        let conn = self.conn.read().await;
+        let conn = self.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT id, source_path, target_path, direction, conflict_strategy,
@@ -283,7 +282,7 @@ impl Database {
     pub async fn delete_job(&self, job_id: &str) -> StorageResult<()> {
         debug!("Deleting job: {}", job_id);
 
-        let conn = self.conn.read().await;
+        let conn = self.conn.lock().unwrap();
 
         conn.execute("DELETE FROM jobs WHERE id = ?1", params![job_id])
             .map_err(|e| StorageError::Database(format!("Failed to delete job: {}", e)))?;
@@ -295,7 +294,7 @@ impl Database {
     pub async fn save_file_metadata(&self, file: &FileNode, job_id: &str) -> StorageResult<()> {
         debug!("Saving file metadata: {}", file.path);
 
-        let conn = self.conn.read().await;
+        let conn = self.conn.lock().unwrap();
 
         conn.execute(
             "INSERT OR REPLACE INTO file_metadata (path, is_directory, size, modified_time, hash, job_id)
@@ -317,7 +316,7 @@ impl Database {
     pub async fn load_file_metadata(&self, path: &str) -> StorageResult<FileNode> {
         debug!("Loading file metadata: {}", path);
 
-        let conn = self.conn.read().await;
+        let conn = self.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT path, is_directory, size, modified_time, hash

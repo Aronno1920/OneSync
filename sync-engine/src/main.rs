@@ -49,14 +49,9 @@ async fn main() -> Result<()> {
 
     // Start the gRPC server
     info!("Starting gRPC server on {}", args.addr);
-    match start_grpc_server(&args.addr, orchestrator).await {
-        Ok(_) => {
-            info!("gRPC server started successfully");
-            Ok(())
-        }
-        Err(e) => {
-            error!("Failed to start gRPC server: {}", e);
-            Err(e)
-        }
-    }
+    start_grpc_server(&args.addr, orchestrator).await
+        .map_err(|e| anyhow::anyhow!("Failed to start gRPC server: {}", e))?;
+    
+    info!("gRPC server started successfully");
+    Ok(())
 }

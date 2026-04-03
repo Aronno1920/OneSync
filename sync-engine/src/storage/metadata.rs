@@ -86,7 +86,7 @@ impl MetadataStore {
     pub async fn get_files_for_job(&self, job_id: &str) -> StorageResult<Vec<FileNode>> {
         debug!("Getting files for job: {}", job_id);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT path, is_directory, size, modified_time, hash
@@ -113,7 +113,7 @@ impl MetadataStore {
     pub async fn delete_file(&self, path: &str) -> StorageResult<()> {
         debug!("Deleting file metadata: {}", path);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         conn.execute("DELETE FROM file_metadata WHERE path = ?1", params![path])
             .map_err(|e| StorageError::Database(format!("Failed to delete file metadata: {}", e)))?;
@@ -129,7 +129,7 @@ impl MetadataStore {
     pub async fn clear_job(&self, job_id: &str) -> StorageResult<()> {
         debug!("Clearing metadata for job: {}", job_id);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         conn.execute("DELETE FROM file_metadata WHERE job_id = ?1", params![job_id])
             .map_err(|e| StorageError::Database(format!("Failed to clear job metadata: {}", e)))?;

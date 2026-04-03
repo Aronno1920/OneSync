@@ -124,10 +124,11 @@ impl TransferEngine {
             source_data.to_vec()
         };
 
+        let len = data_to_write.len() as u64;
         fs::write(target, data_to_write).await
             .map_err(|e| NetworkError::Transfer(format!("Failed to write to target: {}", e)))?;
 
-        Ok(data_to_write.len() as u64)
+        Ok(len)
     }
 
     /// Transfer file deltas

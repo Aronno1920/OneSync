@@ -56,7 +56,7 @@ impl Default for WatcherConfig {
 #[derive(Clone)]
 pub struct FileSystemWatcher {
     config: WatcherConfig,
-    mut watchers: Arc<RwLock<HashMap<String, RecommendedWatcher>>>,
+    watchers: Arc<RwLock<HashMap<String, RecommendedWatcher>>>,
     event_tx: Arc<mpsc::UnboundedSender<FsEvent>>,
     event_rx: Arc<RwLock<Option<mpsc::UnboundedReceiver<FsEvent>>>>,
 }
@@ -100,7 +100,7 @@ impl FileSystemWatcher {
         let mut watchers = self.watchers.write().await;
 
         // Create watcher
-        let watcher = notify::recommended_watcher(move |res: NotifyResult<Event>| {
+        let mut watcher = notify::recommended_watcher(move |res: NotifyResult<Event>| {
             match res {
                 Ok(event) => {
                     debug!("File system event: {:?}", event);

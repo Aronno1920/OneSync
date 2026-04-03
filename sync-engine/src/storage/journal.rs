@@ -45,7 +45,7 @@ impl ChangeJournal {
     pub async fn record_change(&self, path: &str, change_type: &str) -> StorageResult<()> {
         debug!("Recording change: {} - {}", change_type, path);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         conn.execute(
             "INSERT INTO change_journal (job_id, path, change_type, timestamp)
@@ -60,7 +60,7 @@ impl ChangeJournal {
     pub async fn record_sync(&self, job_id: &str, tree: &FileNode) -> StorageResult<()> {
         debug!("Recording sync for job: {}", job_id);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         // Record all files in the tree
         for file in tree.flatten_files() {
@@ -79,7 +79,7 @@ impl ChangeJournal {
     pub async fn get_changes(&self, job_id: &str) -> StorageResult<Vec<JournalEntry>> {
         debug!("Getting changes for job: {}", job_id);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT id, job_id, path, change_type, timestamp
@@ -105,7 +105,7 @@ impl ChangeJournal {
     pub async fn get_file_changes(&self, path: &str) -> StorageResult<Vec<JournalEntry>> {
         debug!("Getting changes for file: {}", path);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT id, job_id, path, change_type, timestamp
@@ -131,7 +131,7 @@ impl ChangeJournal {
     pub async fn get_changes_since(&self, job_id: &str, since: i64) -> StorageResult<Vec<JournalEntry>> {
         debug!("Getting changes for job {} since {}", job_id, since);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT id, job_id, path, change_type, timestamp
@@ -157,7 +157,7 @@ impl ChangeJournal {
     pub async fn clear_job(&self, job_id: &str) -> StorageResult<()> {
         debug!("Clearing changes for job: {}", job_id);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         conn.execute("DELETE FROM change_journal WHERE job_id = ?1", params![job_id])
             .map_err(|e| StorageError::Database(format!("Failed to clear changes: {}", e)))?;
@@ -169,7 +169,7 @@ impl ChangeJournal {
     pub async fn get_stats(&self, job_id: &str) -> StorageResult<ChangeStats> {
         debug!("Getting change stats for job: {}", job_id);
 
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         let total_changes: i64 = conn.query_row(
             "SELECT COUNT(*) FROM change_journal WHERE job_id = ?1",
@@ -194,7 +194,7 @@ impl ChangeJournal {
 
     /// Get changes grouped by type
     async fn get_changes_by_type(&self, job_id: &str) -> StorageResult<Vec<(String, i64)>> {
-        let conn = self.database.conn.read().await;
+        let conn = self.database.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT change_type, COUNT(*) 

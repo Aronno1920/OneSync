@@ -65,16 +65,17 @@ impl SyncOrchestrator {
 
     /// Add a new sync job
     pub async fn add_job(&mut self, job: SyncJob) -> SyncResult<()> {
-        debug!("Adding sync job: {}", job.id);
+        let job_id = job.id.clone();
+        debug!("Adding sync job: {}", job_id);
         
         // Store job in database
         self.database.save_job(&job).await
             .map_err(|e| SyncError::Orchestrator(format!("Failed to save job: {}", e)))?;
 
         let mut jobs = self.jobs.write().await;
-        jobs.insert(job.id.clone(), job);
+        jobs.insert(job_id.clone(), job);
         
-        info!("Added sync job: {}", job.id);
+        info!("Added sync job: {}", job_id);
         Ok(())
     }
 
@@ -107,7 +108,7 @@ impl SyncOrchestrator {
         job.error_message = None;
 
         // Execute sync job synchronously (simplified for testing)
-        let job_id_clone = job_id.clone();
+        let job_id_clone = job_id.to_string();
         let jobs_ref = self.jobs.clone();
         let scanner = self.scanner.clone();
         let differ = self.differ.clone();
@@ -124,7 +125,7 @@ impl SyncOrchestrator {
             metadata_store,
             journal,
         ).await {
-            error!("Sync job {} failed: {}", job_id_clone, e);
+            error!("Sync job {} failed: {}", job_id, e);
             job.error_message = Some(e.to_string());
             job.status = SyncStatus::Failed;
         }
