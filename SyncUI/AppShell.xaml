@@ -1,15 +1,44 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<Shell
-    x:Class="SyncUI.AppShell"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:SyncUI"
-    Shell.FlyoutBehavior="Disabled"
-    Title="SyncUI">
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:SyncUI.Views"
+       x:Class="SyncUI.AppShell"
+       Title="OneSync">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <Shell.FlyoutHeader>
+        <Grid BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
+              HeightRequest="120">
+            <Label Text="OneSync"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"/>
+        </Grid>
+    </Shell.FlyoutHeader>
+
+    <FlyoutItem Title="Dashboard">
+        <ShellContent Title="Dashboard"
+                      Route="MainPage"
+                      ContentTemplate="{DataTemplate views:MainPage}"/>
+    </FlyoutItem>
+
+    <FlyoutItem Title="Jobs">
+        <ShellContent Title="Jobs"
+                      Route="SyncJobPage"
+                      ContentTemplate="{DataTemplate views:SyncJobPage}"/>
+    </FlyoutItem>
+
+    <FlyoutItem Title="Files">
+        <ShellContent Title="Files"
+                      Route="FileListView"
+                      ContentTemplate="{DataTemplate views:FileListView}"/>
+    </FlyoutItem>
+
+    <MenuItem Text="Settings"
+              Command="{Binding SettingsCommand}"/>
+
+    <MenuItem Text="About"
+              Command="{Binding AboutCommand}"/>
 
 </Shell>

@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:SyncUI.ViewModels"
+             xmlns:models="clr-namespace:SyncUI.Models"
+             x:Class="SyncUI.Views.MainPage"
+             x:DataType="viewmodels:MainViewModel"
+             Title="OneSync">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <!-- Header -->
+        <Frame Grid.Row="0" 
+               BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
+               Padding="16"
+               HasShadow="True">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Label Grid.Column="0"
+                       Text="🔄"
+                       FontSize="24"
+                       VerticalOptions="Center"/>
+                <Label Grid.Column="1"
+                       Text="OneSync"
+                       FontSize="22"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       VerticalOptions="Center"
+                       HorizontalOptions="Center"/>
+                <ActivityIndicator Grid.Column="2"
+                                   IsRunning="{Binding IsLoading}"
+                                   Color="White"
+                                   VerticalOptions="Center"/>
+            </Grid>
+        </Frame>
+
+        <!-- Status Bar -->
+        <Frame Grid.Row="1"
+               Padding="12"
+               Margin="0,8,0,8"
+               HasShadow="False"
+               BackgroundColor="{AppThemeBinding Light={StaticResource Secondary}, Dark={StaticResource SecondaryDark}}">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <Label Grid.Column="0"
+                       Text="📊"
+                       FontSize="18"
+                       VerticalOptions="Center"/>
+                <Label Grid.Column="1"
+                       Text="{Binding StatusMessage}"
+                       FontSize="14"
+                       VerticalOptions="Center"
+                       Margin="8,0,0,0"/>
+                <Label Grid.Column="3"
+                       Text="{Binding TotalTransferredSize}"
+                       FontSize="12"
+                       VerticalOptions="Center"
+                       FontAttributes="Italic"/>
+            </Grid>
+        </Frame>
+
+        <!-- Jobs List -->
+        <ScrollView Grid.Row="2">
+            <Grid RowDefinitions="Auto,Auto,*">
+                <!-- Statistics Cards -->
+                <Grid Grid.Row="0"
+                      ColumnDefinitions="*,*,*"
+                      ColumnSpacing="8"
+                      Margin="16,0,16,16">
+                    <Frame Grid.Column="0"
+                           Padding="16"
+                           BackgroundColor="{AppThemeBinding Light=#F0F0F0, Dark=#2D2D2D}"
+                           CornerRadius="12">
+                        <StackLayout Spacing="4">
+                            <Label Text="Total Jobs"
+                                   FontSize="12"
+                                   TextColor="Gray"/>
+                            <Label Text="{Binding TotalJobsCount}"
+                                   FontSize="24"
+                                   FontAttributes="Bold"/>
+                        </StackLayout>
+                    </Frame>
+                    <Frame Grid.Column="1"
+                           Padding="16"
+                           BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B5E20}"
+                           CornerRadius="12">
+                        <StackLayout Spacing="4">
+                            <Label Text="Active Jobs"
+                                   FontSize="12"
+                                   TextColor="Gray"/>
+                            <Label Text="{Binding ActiveJobsCount}"
+                                   FontSize="24"
+                                   FontAttributes="Bold"/>
+                        </StackLayout>
+                    </Frame>
+                    <Frame Grid.Column="2"
+                           Padding="16"
+                           BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#0D47A1}"
+                           CornerRadius="12">
+                        <StackLayout Spacing="4">
+                            <Label Text="Transferred"
+                                   FontSize="12"
+                                   TextColor="Gray"/>
+                            <Label Text="{Binding TotalTransferredSize}"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   LineBreakMode="TailTruncation"/>
+                        </StackLayout>
+                    </Frame>
+                </Grid>
+
+                <!-- Action Buttons -->
+                <Button Grid.Row="1"
+                        Text="➕ Create New Job"
+                        Command="{Binding CreateNewJobCommand}"
+                        Margin="16,0,16,16"
+                        HeightRequest="50"
+                        CornerRadius="25"
+                        FontAttributes="Bold"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
+                        TextColor="White"/>
+
+                <!-- Jobs Collection -->
+                <CollectionView Grid.Row="2"
+                                ItemsSource="{Binding Jobs}"
+                                SelectionMode="None"
+                                Margin="16,0,16,16">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:SyncJob">
+                            <Frame Padding="16"
+                                   Margin="0,0,0,12"
+                                   CornerRadius="12"
+                                   HasShadow="True"
+                                   BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                                      ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Job Name and Status -->
+                                    <Label Grid.Row="0" Grid.Column="0"
+                                           Text="📁"
+                                           FontSize="20"
+                                           VerticalOptions="Center"/>
+                                    <Label Grid.Row="0" Grid.Column="1"
+                                           Text="{Binding Name}"
+                                           FontSize="18"
+                                           FontAttributes="Bold"
+                                           VerticalOptions="Center"
+                                           Margin="8,0,0,0"/>
+                                    <Frame Grid.Row="0" Grid.Column="2"
+                                           Padding="8,4"
+                                           CornerRadius="12"
+                                           BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                                           HasShadow="False">
+                                        <Label Text="{Binding StatusText}"
+                                               FontSize="12"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"/>
+                                    </Frame>
+
+                                    <!-- Paths -->
+                                    <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                           Text="{Binding SourcePath}"
+                                           FontSize="12"
+                                           TextColor="Gray"
+                                           LineBreakMode="TailTruncation"
+                                           Margin="8,4,0,0"/>
+                                    <Label Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                                           Text="↓"
+                                           FontSize="12"
+                                           HorizontalOptions="Center"
+                                           Margin="0,2"/>
+                                    <Label Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2"
+                                           Text="{Binding DestinationPath}"
+                                           FontSize="12"
+                                           TextColor="Gray"
+                                           LineBreakMode="TailTruncation"
+                                           Margin="8,0,0,4"/>
+
+                                    <!-- Progress Bar -->
+                                    <ProgressBar Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3"
+                                                 Progress="{Binding Progress, Converter={StaticResource PercentToDoubleConverter}}"
+                                                 HeightRequest="4"
+                                                 Margin="0,8,0,0"
+                                                 ProgressColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"/>
+
+                                    <!-- Action Buttons -->
+                                    <FlexLayout Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3"
+                                                JustifyContent="SpaceBetween"
+                                                Margin="0,12,0,0">
+                                        <Button Text="▶️"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=StartJobCommand}"
+                                                CommandParameter="{Binding}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                CornerRadius="20"
+                                                Padding="0"
+                                                BackgroundColor="#4CAF50"
+                                                TextColor="White"/>
+                                        <Button Text="⏸️"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=PauseJobCommand}"
+                                                CommandParameter="{Binding}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                CornerRadius="20"
+                                                Padding="0"
+                                                BackgroundColor="#FF9800"
+                                                TextColor="White"/>
+                                        <Button Text="⏹️"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=StopJobCommand}"
+                                                CommandParameter="{Binding}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                CornerRadius="20"
+                                                Padding="0"
+                                                BackgroundColor="#F44336"
+                                                TextColor="White"/>
+                                        <Button Text="📝"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=EditJobCommand}"
+                                                CommandParameter="{Binding}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                CornerRadius="20"
+                                                Padding="0"
+                                                BackgroundColor="#2196F3"
+                                                TextColor="White"/>
+                                        <Button Text="📄"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=ViewJobFilesCommand}"
+                                                CommandParameter="{Binding}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                CornerRadius="20"
+                                                Padding="0"
+                                                BackgroundColor="#9C27B0"
+                                                TextColor="White"/>
+                                        <Button Text="🗑️"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=DeleteJobCommand}"
+                                                CommandParameter="{Binding}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                CornerRadius="20"
+                                                Padding="0"
+                                                BackgroundColor="#607D8B"
+                                                TextColor="White"/>
+                                    </FlexLayout>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <Label Text="No sync jobs configured. Create a new job to get started!"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center"
+                               Padding="32"
+                               TextColor="Gray"/>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+            </Grid>
+        </ScrollView>
+    </Grid>
+</ContentPage>

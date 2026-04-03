@@ -1,24 +1,15 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <?xaml-comp compile="true" ?>
 <ResourceDictionary 
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
-
+    <!-- Light Theme Colors -->
     <Color x:Key="Primary">#512BD4</Color>
-    <Color x:Key="PrimaryDark">#ac99ea</Color>
-    <Color x:Key="PrimaryDarkText">#242424</Color>
     <Color x:Key="Secondary">#DFD8F7</Color>
-    <Color x:Key="SecondaryDarkText">#9880e5</Color>
     <Color x:Key="Tertiary">#2B0B98</Color>
-
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>
-    <Color x:Key="Magenta">#D600AA</Color>
-    <Color x:Key="MidnightBlue">#190649</Color>
-    <Color x:Key="OffBlack">#1f1f1f</Color>
-
     <Color x:Key="Gray100">#E1E1E1</Color>
     <Color x:Key="Gray200">#C8C8C8</Color>
     <Color x:Key="Gray300">#ACACAC</Color>
@@ -28,18 +19,34 @@
     <Color x:Key="Gray900">#212121</Color>
     <Color x:Key="Gray950">#141414</Color>
 
-    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Primary}"/>
-    <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource Secondary}"/>
-    <SolidColorBrush x:Key="TertiaryBrush" Color="{StaticResource Tertiary}"/>
-    <SolidColorBrush x:Key="WhiteBrush" Color="{StaticResource White}"/>
-    <SolidColorBrush x:Key="BlackBrush" Color="{StaticResource Black}"/>
+    <!-- Dark Theme Colors -->
+    <Color x:Key="PrimaryDark">#7F5AF0</Color>
+    <Color x:Key="SecondaryDark">#242629</Color>
+    <Color x:Key="TertiaryDark">#2CB67D</Color>
+    <Color x:Key="WhiteDark">#FFFFFE</Color>
+    <Color x:Key="BlackDark">#16161A</Color>
+    <Color x:Key="Gray100Dark">#94A1B2</Color>
+    <Color x:Key="Gray200Dark">#72757E</Color>
+    <Color x:Key="Gray300Dark">#63666F</Color>
+    <Color x:Key="Gray400Dark">#4B5563</Color>
+    <Color x:Key="Gray500Dark">#374151</Color>
+    <Color x:Key="Gray600Dark">#1F2937</Color>
+    <Color x:Key="Gray900Dark">#111827</Color>
+    <Color x:Key="Gray950Dark">#0B0F19</Color>
 
-    <SolidColorBrush x:Key="Gray100Brush" Color="{StaticResource Gray100}"/>
-    <SolidColorBrush x:Key="Gray200Brush" Color="{StaticResource Gray200}"/>
-    <SolidColorBrush x:Key="Gray300Brush" Color="{StaticResource Gray300}"/>
-    <SolidColorBrush x:Key="Gray400Brush" Color="{StaticResource Gray400}"/>
-    <SolidColorBrush x:Key="Gray500Brush" Color="{StaticResource Gray500}"/>
-    <SolidColorBrush x:Key="Gray600Brush" Color="{StaticResource Gray600}"/>
-    <SolidColorBrush x:Key="Gray900Brush" Color="{StaticResource Gray900}"/>
-    <SolidColorBrush x:Key="Gray950Brush" Color="{StaticResource Gray950}"/>
+    <!-- Status Colors -->
+    <Color x:Key="Success">#4CAF50</Color>
+    <Color x:Key="Warning">#FF9800</Color>
+    <Color x:Key="Error">#F44336</Color>
+    <Color x:Key="Info">#2196F3</Color>
+
+    <!-- File Status Colors -->
+    <Color x:Key="FileStatusInSync">#4CAF50</Color>
+    <Color x:Key="FileStatusNew">#2196F3</Color>
+    <Color x:Key="FileStatusModified">#FF9800</Color>
+    <Color x:Key="FileStatusDeleted">#F44336</Color>
+    <Color x:Key="FileStatusSyncing">#9C27B0</Color>
+    <Color x:Key="FileStatusFailed">#F44336</Color>
+    <Color x:Key="FileStatusSkipped">#9E9E9E</Color>
+
 </ResourceDictionary>
