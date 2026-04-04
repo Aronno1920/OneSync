@@ -21,8 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\SyncUI_MAUI\Protocol.cs" Link="Protocol\Protocol.cs" />
-    <Compile Include="..\SyncUI_MAUI\ProtocolGrpc.cs" Link="Protocol\ProtocolGrpc.cs" />
+    <Protobuf Include="..\sync-engine\src\ipc\protocol.proto" GrpcServices="Client" Link="Protocol\protocol.proto" />
   </ItemGroup>
 
 </Project>
