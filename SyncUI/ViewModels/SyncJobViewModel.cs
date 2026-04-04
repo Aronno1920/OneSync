@@ -1,49 +1,76 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Logging;
 using SyncUI.Models;
 using SyncUI.Services;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace SyncUI.ViewModels;
 
 /// <summary>
 /// View model for sync job configuration and management
 /// </summary>
-public partial class SyncJobViewModel : ObservableObject
+public class SyncJobViewModel : INotifyPropertyChanged
 {
     private readonly GrpcSyncClient _syncClient;
     private readonly NotificationService _notificationService;
-    private readonly ILogger<SyncJobViewModel> _logger;
 
-    [ObservableProperty]
     private SyncJob _job = new();
-
-    [ObservableProperty]
     private bool _isNew = true;
-
-    [ObservableProperty]
     private bool _isLoading;
-
-    [ObservableProperty]
     private bool _isValid;
-
-    [ObservableProperty]
     private string _validationMessage = string.Empty;
-
-    [ObservableProperty]
     private bool _isTestingConnection;
+
+    public SyncJob Job
+    {
+        get => _job;
+        set
+        {
+            if (SetProperty(ref _job, value))
+            {
+                Validate();
+            }
+        }
+    }
+
+    public bool IsNew
+    {
+        get => _isNew;
+        set => SetProperty(ref _isNew, value);
+    }
+
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set => SetProperty(ref _isLoading, value);
+    }
+
+    public bool IsValid
+    {
+        get => _isValid;
+        set => SetProperty(ref _isValid, value);
+    }
+
+    public string ValidationMessage
+    {
+        get => _validationMessage;
+        set => SetProperty(ref _validationMessage, value);
+    }
+
+    public bool IsTestingConnection
+    {
+        get => _isTestingConnection;
+        set => SetProperty(ref _isTestingConnection, value);
+    }
 
     public List<string> AvailableDirections { get; } = Enum.GetNames(typeof(SyncDirection)).ToList();
     public List<string> AvailableModes { get; } = Enum.GetNames(typeof(SyncMode)).ToList();
 
     public SyncJobViewModel(
         GrpcSyncClient syncClient,
-        NotificationService notificationService,
-        ILogger<SyncJobViewModel> logger)
+        NotificationService notificationService)
     {
         _syncClient = syncClient;
         _notificationService = notificationService;
-        _logger = logger;
     }
 
     public void Initialize(SyncJob? job, bool isNew)
@@ -56,64 +83,19 @@ public partial class SyncJobViewModel : ObservableObject
         Validate();
     }
 
-    [RelayCommand]
-    private async Task BrowseSourceAsync()
+    public void SetSourcePath(string path)
     {
-        try
-        {
-            var result = await FilePicker.PickAsync(new PickOptions
-            {
-                PickerTitle = "Select Source Folder",
-                FileTypes = null
-            });
-
-            if (result != null)
-            {
-                var directory = Path.GetDirectoryName(result.FullPath);
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    Job.SourcePath = directory;
-                    Validate();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to browse source folder");
-            await _notificationService.ShowErrorNotificationAsync("Browse", ex.Message);
-        }
+        Job.SourcePath = path;
+        Validate();
     }
 
-    [RelayCommand]
-    private async Task BrowseDestinationAsync()
+    public void SetDestinationPath(string path)
     {
-        try
-        {
-            var result = await FilePicker.PickAsync(new PickOptions
-            {
-                PickerTitle = "Select Destination Folder",
-                FileTypes = null
-            });
-
-            if (result != null)
-            {
-                var directory = Path.GetDirectoryName(result.FullPath);
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    Job.DestinationPath = directory;
-                    Validate();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to browse destination folder");
-            await _notificationService.ShowErrorNotificationAsync("Browse", ex.Message);
-        }
+        Job.DestinationPath = path;
+        Validate();
     }
 
-    [RelayCommand]
-    private async Task TestConnectionAsync()
+    public async Task TestConnectionAsync()
     {
         if (string.IsNullOrWhiteSpace(Job.SourcePath) || string.IsNullOrWhiteSpace(Job.DestinationPath))
         {
@@ -142,7 +124,6 @@ public partial class SyncJobViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to test connection");
             ValidationMessage = $"✗ Error: {ex.Message}";
         }
         finally
@@ -151,10 +132,9 @@ public partial class SyncJobViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task SaveAsync()
+    public async Task<SyncJob?> SaveAsync()
     {
-        if (!IsValid) return;
+        if (!IsValid) return null;
 
         IsLoading = true;
         try
@@ -167,16 +147,15 @@ public partial class SyncJobViewModel : ObservableObject
             else
             {
                 // TODO: Implement update job functionality when backend supports it
-                // Job = await _syncClient.UpdateJobAsync(Job);
                 await _notificationService.ShowNotificationAsync("Job Updated", $"Job '{Job.Name}' has been updated (local only)");
             }
 
-            await Shell.Current.GoToAsync("..");
+            return Job;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save job");
             await _notificationService.ShowErrorNotificationAsync("Save", ex.Message);
+            return null;
         }
         finally
         {
@@ -184,14 +163,7 @@ public partial class SyncJobViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task CancelAsync()
-    {
-        await Shell.Current.GoToAsync("..");
-    }
-
-    [RelayCommand]
-    private void Validate()
+    public void Validate()
     {
         var errors = new List<string>();
 
@@ -232,8 +204,18 @@ public partial class SyncJobViewModel : ObservableObject
         ValidationMessage = IsValid ? "All settings are valid" : string.Join("\n", errors);
     }
 
-    partial void OnJobChanged(SyncJob value)
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
-        Validate();
+        if (Equals(field, value)) return false;
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

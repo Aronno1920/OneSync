@@ -19,6 +19,7 @@ fn migrations() -> Migrations<'static> {
         M::up(
             "CREATE TABLE IF NOT EXISTS jobs (
                 id TEXT PRIMARY KEY,
+                name TEXT NOT NULL DEFAULT '',
                 source_path TEXT NOT NULL,
                 target_path TEXT NOT NULL,
                 direction INTEGER NOT NULL,
@@ -33,6 +34,10 @@ fn migrations() -> Migrations<'static> {
                 end_time INTEGER,
                 error_message TEXT
             );"
+        ),
+        // Migration to add name column to existing databases
+        M::up(
+            "ALTER TABLE jobs ADD COLUMN name TEXT NOT NULL DEFAULT '';"
         ),
         M::up(
             "CREATE TABLE IF NOT EXISTS file_metadata (
@@ -109,12 +114,13 @@ impl Database {
 
         conn.execute(
             "INSERT OR REPLACE INTO jobs (
-                id, source_path, target_path, direction, conflict_strategy,
+                id, name, source_path, target_path, direction, conflict_strategy,
                 exclude_patterns, include_patterns, enable_compression, block_size,
                 status, created_at, start_time, end_time, error_message
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
             params![
                 job.id,
+                job.config.name,
                 job.config.source_path,
                 job.config.target_path,
                 job.config.direction as i32,
@@ -141,17 +147,17 @@ impl Database {
         let conn = self.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
-            "SELECT id, source_path, target_path, direction, conflict_strategy,
+            "SELECT id, name, source_path, target_path, direction, conflict_strategy,
                     exclude_patterns, include_patterns, enable_compression, block_size,
                     status, created_at, start_time, end_time, error_message
              FROM jobs WHERE id = ?1"
         ).map_err(|e| StorageError::Database(format!("Failed to prepare statement: {}", e)))?;
 
         let job = stmt.query_row(params![job_id], |row| {
-            let exclude_patterns: String = row.get(5)?;
-            let include_patterns: String = row.get(6)?;
+            let exclude_patterns: String = row.get(6)?;
+            let include_patterns: String = row.get(7)?;
             
-            let direction_val: i32 = row.get(3)?;
+            let direction_val: i32 = row.get(4)?;
             let direction = match direction_val {
                 0 => crate::models::sync_job::SyncDirection::Bidirectional,
                 1 => crate::models::sync_job::SyncDirection::SourceToTarget,
@@ -159,7 +165,7 @@ impl Database {
                 _ => crate::models::sync_job::SyncDirection::Bidirectional,
             };
             
-            let conflict_strategy_val: i32 = row.get(4)?;
+            let conflict_strategy_val: i32 = row.get(5)?;
             let conflict_strategy = match conflict_strategy_val {
                 0 => crate::models::sync_job::ConflictStrategy::LastWriteWins,
                 1 => crate::models::sync_job::ConflictStrategy::Manual,
@@ -167,7 +173,7 @@ impl Database {
                 _ => crate::models::sync_job::ConflictStrategy::LastWriteWins,
             };
             
-            let status_val: i32 = row.get(9)?;
+            let status_val: i32 = row.get(10)?;
             let status = match status_val {
                 0 => crate::models::sync_job::SyncStatus::Idle,
                 1 => crate::models::sync_job::SyncStatus::Scanning,
@@ -183,20 +189,21 @@ impl Database {
             Ok(SyncJob {
                 id: row.get(0)?,
                 config: crate::models::sync_job::SyncJobConfig {
-                    source_path: row.get(1)?,
-                    target_path: row.get(2)?,
+                    name: row.get(1)?,
+                    source_path: row.get(2)?,
+                    target_path: row.get(3)?,
                     direction,
                     conflict_strategy,
                     exclude_patterns: serde_json::from_str(&exclude_patterns).unwrap_or_default(),
                     include_patterns: serde_json::from_str(&include_patterns).unwrap_or_default(),
-                    enable_compression: row.get(7)?,
-                    block_size: row.get(8)?,
+                    enable_compression: row.get(8)?,
+                    block_size: row.get(9)?,
                 },
                 status,
-                created_at: chrono::DateTime::from_timestamp(row.get(10)?, 0).unwrap(),
-                start_time: row.get::<_, Option<i64>>(11)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
-                end_time: row.get::<_, Option<i64>>(12)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
-                error_message: row.get(13)?,
+                created_at: chrono::DateTime::from_timestamp(row.get(11)?, 0).unwrap(),
+                start_time: row.get::<_, Option<i64>>(12)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
+                end_time: row.get::<_, Option<i64>>(13)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
+                error_message: row.get(14)?,
                 progress: Default::default(),
                 conflicts: Vec::new(),
             })
@@ -212,17 +219,17 @@ impl Database {
         let conn = self.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
-            "SELECT id, source_path, target_path, direction, conflict_strategy,
+            "SELECT id, name, source_path, target_path, direction, conflict_strategy,
                     exclude_patterns, include_patterns, enable_compression, block_size,
                     status, created_at, start_time, end_time, error_message
              FROM jobs"
         ).map_err(|e| StorageError::Database(format!("Failed to prepare statement: {}", e)))?;
 
         let jobs = stmt.query_map([], |row| {
-            let exclude_patterns: String = row.get(5)?;
-            let include_patterns: String = row.get(6)?;
+            let exclude_patterns: String = row.get(6)?;
+            let include_patterns: String = row.get(7)?;
             
-            let direction_val: i32 = row.get(3)?;
+            let direction_val: i32 = row.get(4)?;
             let direction = match direction_val {
                 0 => crate::models::sync_job::SyncDirection::Bidirectional,
                 1 => crate::models::sync_job::SyncDirection::SourceToTarget,
@@ -230,7 +237,7 @@ impl Database {
                 _ => crate::models::sync_job::SyncDirection::Bidirectional,
             };
             
-            let conflict_strategy_val: i32 = row.get(4)?;
+            let conflict_strategy_val: i32 = row.get(5)?;
             let conflict_strategy = match conflict_strategy_val {
                 0 => crate::models::sync_job::ConflictStrategy::LastWriteWins,
                 1 => crate::models::sync_job::ConflictStrategy::Manual,
@@ -238,7 +245,7 @@ impl Database {
                 _ => crate::models::sync_job::ConflictStrategy::LastWriteWins,
             };
             
-            let status_val: i32 = row.get(9)?;
+            let status_val: i32 = row.get(10)?;
             let status = match status_val {
                 0 => crate::models::sync_job::SyncStatus::Idle,
                 1 => crate::models::sync_job::SyncStatus::Scanning,
@@ -254,20 +261,21 @@ impl Database {
             Ok(SyncJob {
                 id: row.get(0)?,
                 config: crate::models::sync_job::SyncJobConfig {
-                    source_path: row.get(1)?,
-                    target_path: row.get(2)?,
+                    name: row.get(1)?,
+                    source_path: row.get(2)?,
+                    target_path: row.get(3)?,
                     direction,
                     conflict_strategy,
                     exclude_patterns: serde_json::from_str(&exclude_patterns).unwrap_or_default(),
                     include_patterns: serde_json::from_str(&include_patterns).unwrap_or_default(),
-                    enable_compression: row.get(7)?,
-                    block_size: row.get(8)?,
+                    enable_compression: row.get(8)?,
+                    block_size: row.get(9)?,
                 },
                 status,
-                created_at: chrono::DateTime::from_timestamp(row.get(10)?, 0).unwrap(),
-                start_time: row.get::<_, Option<i64>>(11)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
-                end_time: row.get::<_, Option<i64>>(12)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
-                error_message: row.get(13)?,
+                created_at: chrono::DateTime::from_timestamp(row.get(11)?, 0).unwrap(),
+                start_time: row.get::<_, Option<i64>>(12)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
+                end_time: row.get::<_, Option<i64>>(13)?.map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap()),
+                error_message: row.get(14)?,
                 progress: Default::default(),
                 conflicts: Vec::new(),
             })

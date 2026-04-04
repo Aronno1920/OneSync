@@ -35,14 +35,22 @@ public class GrpcSyncClient : IDisposable
 
             // Test connection by listing jobs
             var testResponse = await _client.ListJobsAsync(
-                new SyncEngine.ListJobsRequest(), 
+                new SyncEngine.ListJobsRequest(),
                 cancellationToken: cancellationToken);
 
             return true;
         }
+        catch (Grpc.Core.RpcException ex) when (ex.Status.StatusCode == Grpc.Core.StatusCode.Unavailable)
+        {
+            Debug.WriteLine($"Failed to connect to sync engine: Server is not running at {_serverAddress}");
+            Debug.WriteLine($"Please start the sync-engine server first using: cd sync-engine && cargo run -- --addr 127.0.0.1:50051");
+            Debug.WriteLine($"Or run the startup script: start-app.bat");
+            return false;
+        }
         catch (Exception ex)
         {
             Debug.WriteLine($"Failed to connect to sync engine: {ex.Message}");
+            Debug.WriteLine($"Server address: {_serverAddress}");
             return false;
         }
     }
@@ -208,6 +216,7 @@ public class GrpcSyncClient : IDisposable
         return new SyncJob
         {
             Id = proto.JobId,
+            Name = proto.Name,
             SourcePath = proto.SourcePath,
             DestinationPath = proto.TargetPath,
             Status = (JobStatus)proto.Status,
@@ -219,6 +228,7 @@ public class GrpcSyncClient : IDisposable
     {
         return new SyncEngine.CreateJobRequest
         {
+            Name = job.Name,
             SourcePath = job.SourcePath,
             TargetPath = job.DestinationPath,
             Direction = (SyncEngine.SyncDirection)job.Direction,

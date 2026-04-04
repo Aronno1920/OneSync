@@ -67,6 +67,8 @@ pub enum SyncStatus {
 /// Sync job configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncJobConfig {
+    /// Job name
+    pub name: String,
     /// Source directory path
     pub source_path: String,
     /// Target directory path
@@ -88,6 +90,7 @@ pub struct SyncJobConfig {
 impl Default for SyncJobConfig {
     fn default() -> Self {
         Self {
+            name: String::new(),
             source_path: String::new(),
             target_path: String::new(),
             direction: SyncDirection::Bidirectional,

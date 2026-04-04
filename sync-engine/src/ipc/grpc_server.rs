@@ -41,6 +41,7 @@ impl SyncEngine for SyncEngineServer {
 
         let job_id = Uuid::new_v4().to_string();
         let config = SyncJobConfig {
+            name: req.name.clone(),
             source_path: req.source_path.clone(),
             target_path: req.target_path.clone(),
             direction: match req.direction() {
@@ -173,6 +174,7 @@ impl SyncEngine for SyncEngineServer {
 
         let job_summaries = jobs.iter().map(|job| JobSummary {
             job_id: job.id.clone(),
+            name: job.config.name.clone(),
             source_path: job.config.source_path.clone(),
             target_path: job.config.target_path.clone(),
             status: match job.status {

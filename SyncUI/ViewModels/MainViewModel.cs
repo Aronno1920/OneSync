@@ -1,49 +1,67 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using SyncUI.Models;
 using SyncUI.Services;
-using System.Collections.ObjectModel;
-using Microsoft.Extensions.Logging;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace SyncUI.ViewModels;
 
 /// <summary>
 /// Main view model for the application
 /// </summary>
-public partial class MainViewModel : ObservableObject
+public class MainViewModel : INotifyPropertyChanged
 {
     private readonly GrpcSyncClient _syncClient;
     private readonly NotificationService _notificationService;
-    private readonly ILogger<MainViewModel> _logger;
 
-    [ObservableProperty]
     private bool _isConnected;
-
-    [ObservableProperty]
     private bool _isLoading;
-
-    [ObservableProperty]
     private string _statusMessage = "Connecting to sync engine...";
-
-    [ObservableProperty]
     private int _activeJobsCount;
-
-    [ObservableProperty]
     private int _totalJobsCount;
-
-    [ObservableProperty]
     private string _totalTransferredSize = "0 B";
 
-    public ObservableCollection<SyncJob> Jobs { get; } = new();
+    public BindingList<SyncJob> Jobs { get; } = new();
 
-    public MainViewModel(
-        GrpcSyncClient syncClient,
-        NotificationService notificationService,
-        ILogger<MainViewModel> logger)
+    public bool IsConnected
+    {
+        get => _isConnected;
+        set => SetProperty(ref _isConnected, value);
+    }
+
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set => SetProperty(ref _isLoading, value);
+    }
+
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        set => SetProperty(ref _statusMessage, value);
+    }
+
+    public int ActiveJobsCount
+    {
+        get => _activeJobsCount;
+        set => SetProperty(ref _activeJobsCount, value);
+    }
+
+    public int TotalJobsCount
+    {
+        get => _totalJobsCount;
+        set => SetProperty(ref _totalJobsCount, value);
+    }
+
+    public string TotalTransferredSize
+    {
+        get => _totalTransferredSize;
+        set => SetProperty(ref _totalTransferredSize, value);
+    }
+
+    public MainViewModel(GrpcSyncClient syncClient, NotificationService notificationService)
     {
         _syncClient = syncClient;
         _notificationService = notificationService;
-        _logger = logger;
 
         // Subscribe to sync client events
         _syncClient.SyncProgress += OnSyncProgress;
@@ -51,8 +69,7 @@ public partial class MainViewModel : ObservableObject
         _syncClient.SyncError += OnSyncError;
     }
 
-    [RelayCommand]
-    private async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         IsLoading = true;
         StatusMessage = "Connecting to sync engine...";
@@ -70,12 +87,12 @@ public partial class MainViewModel : ObservableObject
             }
             else
             {
-                StatusMessage = "Failed to connect to sync engine";
+                StatusMessage = "Failed to connect to sync engine. Please ensure the sync-engine server is running.";
+                StatusMessage += " Run 'start-app.bat' to start both the server and UI.";
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize main view model");
             StatusMessage = $"Error: {ex.Message}";
         }
         finally
@@ -84,8 +101,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task RefreshJobsAsync()
+    public async Task RefreshJobsAsync()
     {
         if (!IsConnected) return;
 
@@ -96,7 +112,6 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh jobs");
             await _notificationService.ShowErrorNotificationAsync("Refresh", ex.Message);
         }
         finally
@@ -105,58 +120,20 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task CreateNewJobAsync()
+    public async Task CreateNewJobAsync(SyncJob job)
     {
         if (!IsConnected) return;
-
-        // Navigate to job creation page
-        // This would typically use Shell navigation
-        await Shell.Current.GoToAsync("//SyncJobPage", new Dictionary<string, object>
-        {
-            { "Job", null },
-            { "IsNew", true }
-        });
-    }
-
-    [RelayCommand]
-    private async Task EditJobAsync(SyncJob? job)
-    {
-        if (job == null || !IsConnected) return;
-
-        await Shell.Current.GoToAsync("//SyncJobPage", new Dictionary<string, object>
-        {
-            { "Job", job },
-            { "IsNew", false }
-        });
-    }
-
-    [RelayCommand]
-    private async Task DeleteJobAsync(SyncJob? job)
-    {
-        if (job == null || !IsConnected) return;
-
-        var confirmed = await (Application.Current?.MainPage?.DisplayAlert(
-            "Confirm Delete",
-            $"Are you sure you want to delete job '{job.Name}'?",
-            "Delete",
-            "Cancel") ?? Task.FromResult(false));
-
-        if (!confirmed) return;
 
         IsLoading = true;
         try
         {
-            // TODO: Implement delete job functionality when backend supports it
-            // var success = await _syncClient.DeleteJobAsync(job.Id);
-            // For now, just remove from local list
-            Jobs.Remove(job);
+            var createdJob = await _syncClient.CreateJobAsync(job);
+            Jobs.Add(createdJob);
             UpdateStatistics();
-            await _notificationService.ShowNotificationAsync("Job Deleted", $"Job '{job.Name}' has been deleted (local only)");
+            await _notificationService.ShowNotificationAsync("Job Created", $"Job '{job.Name}' has been created");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete job {JobId}", job.Id);
             await _notificationService.ShowErrorNotificationAsync(job.Name, ex.Message);
         }
         finally
@@ -165,8 +142,30 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task StartJobAsync(SyncJob? job)
+    public async Task DeleteJobAsync(SyncJob job)
+    {
+        if (job == null || !IsConnected) return;
+
+        IsLoading = true;
+        try
+        {
+            // TODO: Implement delete job functionality when backend supports it
+            // For now, just remove from local list
+            Jobs.Remove(job);
+            UpdateStatistics();
+            await _notificationService.ShowNotificationAsync("Job Deleted", $"Job '{job.Name}' has been deleted (local only)");
+        }
+        catch (Exception ex)
+        {
+            await _notificationService.ShowErrorNotificationAsync(job.Name, ex.Message);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    public async Task StartJobAsync(SyncJob job)
     {
         if (job == null || !IsConnected) return;
 
@@ -182,7 +181,6 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start job {JobId}", job.Id);
             await _notificationService.ShowErrorNotificationAsync(job.Name, ex.Message);
         }
         finally
@@ -191,8 +189,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task StopJobAsync(SyncJob? job)
+    public async Task StopJobAsync(SyncJob job)
     {
         if (job == null || !IsConnected) return;
 
@@ -208,7 +205,6 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to stop job {JobId}", job.Id);
             await _notificationService.ShowErrorNotificationAsync(job.Name, ex.Message);
         }
         finally
@@ -217,8 +213,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task PauseJobAsync(SyncJob? job)
+    public async Task PauseJobAsync(SyncJob job)
     {
         if (job == null || !IsConnected) return;
 
@@ -236,24 +231,12 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to pause job {JobId}", job.Id);
             await _notificationService.ShowErrorNotificationAsync(job.Name, ex.Message);
         }
         finally
         {
             IsLoading = false;
         }
-    }
-
-    [RelayCommand]
-    private async Task ViewJobFilesAsync(SyncJob? job)
-    {
-        if (job == null) return;
-
-        await Shell.Current.GoToAsync("//FileListView", new Dictionary<string, object>
-        {
-            { "Job", job }
-        });
     }
 
     private async Task LoadJobsAsync()
@@ -285,10 +268,8 @@ public partial class MainViewModel : ObservableObject
             job.Progress = e.Progress;
             job.TotalFiles = e.TotalFiles;
             
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                UpdateStatistics();
-            });
+            // Update statistics on UI thread
+            UpdateStatistics();
         }
     }
 
@@ -334,5 +315,20 @@ public partial class MainViewModel : ObservableObject
             size /= 1024;
         }
         return $"{size:0.##} {sizes[order]}";
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (Equals(field, value)) return false;
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

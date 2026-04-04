@@ -68,22 +68,24 @@ message ConflictInfo {
 // Job summary
 message JobSummary {
     string job_id = 1;
-    string source_path = 2;
-    string target_path = 3;
-    JobStatus status = 4;
-    int64 created_at = 5;
+    string name = 2;
+    string source_path = 3;
+    string target_path = 4;
+    JobStatus status = 5;
+    int64 created_at = 6;
 }
 
 // Create job request
 message CreateJobRequest {
-    string source_path = 1;
-    string target_path = 2;
-    SyncDirection direction = 3;
-    ConflictStrategy conflict_strategy = 4;
-    repeated string exclude_patterns = 5;
-    repeated string include_patterns = 6;
-    bool enable_compression = 7;
-    uint32 block_size = 8;
+    string name = 1;
+    string source_path = 2;
+    string target_path = 3;
+    SyncDirection direction = 4;
+    ConflictStrategy conflict_strategy = 5;
+    repeated string exclude_patterns = 6;
+    repeated string include_patterns = 7;
+    bool enable_compression = 8;
+    uint32 block_size = 9;
 }
 
 // Create job response

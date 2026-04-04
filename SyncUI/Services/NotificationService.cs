@@ -1,19 +1,12 @@
-using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace SyncUI.Services;
 
 /// <summary>
-/// Service for managing notifications across platforms
+/// Service for managing notifications for Windows Desktop
 /// </summary>
 public class NotificationService
 {
-    private readonly ILogger<NotificationService> _logger;
-
-    public NotificationService(ILogger<NotificationService> logger)
-    {
-        _logger = logger;
-    }
-
     /// <summary>
     /// Shows a local notification
     /// </summary>
@@ -21,19 +14,11 @@ public class NotificationService
     {
         try
         {
-#if ANDROID
-            await ShowAndroidNotificationAsync(title, message, jobId);
-#elif IOS
-            await ShowIOSNotificationAsync(title, message, jobId);
-#elif MACCATALYST
-            await ShowMacNotificationAsync(title, message, jobId);
-#elif WINDOWS
             await ShowWindowsNotificationAsync(title, message, jobId);
-#endif
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to show notification: {Title} - {Message}", title, message);
+            Debug.WriteLine($"Failed to show notification: {title} - {message}: {ex.Message}");
         }
     }
 
@@ -70,142 +55,29 @@ public class NotificationService
         await ShowNotificationAsync(title, message);
     }
 
-#if ANDROID
-    private async Task ShowAndroidNotificationAsync(string title, string message, string? jobId)
-    {
-        var context = Android.App.Application.Context;
-        var channelId = "onesync_channel";
-        var notificationId = jobId?.GetHashCode() ?? DateTime.Now.GetHashCode();
-
-        // Create notification channel for Android O+
-        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
-        {
-            var channel = new Android.App.NotificationChannel(
-                channelId,
-                "OneSync Notifications",
-                Android.App.NotificationImportance.High)
-            {
-                Description = "Notifications for OneSync sync operations"
-            };
-
-            var notificationManager = context.GetSystemService(Android.App.Context.NotificationService) 
-                as Android.App.NotificationManager;
-            notificationManager?.CreateNotificationChannel(channel);
-        }
-
-        var builder = new Android.App.Notification.Builder(context, channelId)
-            .SetContentTitle(title)
-            .SetContentText(message)
-            .SetSmallIcon(Android.Resource.Drawable.IcDialogInfo)
-            .SetAutoCancel(true);
-
-        var notificationManager = context.GetSystemService(Android.App.Context.NotificationService) 
-            as Android.App.NotificationManager;
-        notificationManager?.Notify(notificationId, builder.Build());
-
-        await Task.CompletedTask;
-    }
-#endif
-
-#if IOS
-    private async Task ShowIOSNotificationAsync(string title, string message, string? jobId)
-    {
-        var content = new UserNotifications.UNMutableNotificationContent
-        {
-            Title = title,
-            Body = message,
-            Sound = UserNotifications.UNNotificationSound.Default
-        };
-
-        var trigger = UserNotifications.UNTimeIntervalNotificationTrigger.CreateTrigger(0.25, false);
-        var request = UserNotifications.UNNotificationRequest.FromIdentifier(
-            jobId ?? Guid.NewGuid().ToString(),
-            content,
-            trigger);
-
-        var center = UserNotifications.UNUserNotificationCenter.Current;
-        await center.AddNotificationRequestAsync(request);
-    }
-#endif
-
-#if MACCATALYST
-    private async Task ShowMacNotificationAsync(string title, string message, string? jobId)
-    {
-        var notification = new Foundation.NSNotification
-        {
-            Title = title,
-            InformativeText = message,
-            SoundName = Foundation.NSNotificationSound.Default
-        };
-
-        Foundation.NSNotificationCenter.DefaultCenter.PostNotificationName(
-            new Foundation.NSString("OneSyncNotification"),
-            null,
-            notification);
-
-        await Task.CompletedTask;
-    }
-#endif
-
-#if WINDOWS
+    /// <summary>
+    /// Shows a Windows notification using Windows Forms NotifyIcon
+    /// </summary>
     private async Task ShowWindowsNotificationAsync(string title, string message, string? jobId)
     {
-        // Use Windows Toast Notifications
-        var toastXml = $@"
-            <toast>
-                <visual>
-                    <binding template='ToastGeneric'>
-                        <text>{title}</text>
-                        <text>{message}</text>
-                    </binding>
-                </visual>
-            </toast>";
-
-        var xmlDoc = new Windows.Data.Xml.Dom.XmlDocument();
-        xmlDoc.LoadXml(toastXml);
-
-        var toastNotification = new Windows.UI.Notifications.ToastNotification(xmlDoc);
-        var notifier = Windows.UI.Notifications.ToastNotificationManager.CreateToastNotifier("OneSync");
-        notifier.Show(toastNotification);
-
+        // This method should be called from the main UI thread
+        // The actual notification will be shown using a NotifyIcon in the main form
+        // For now, we'll just log it
+        Debug.WriteLine($"[Notification] {title}: {message}");
+        
+        // TODO: Integrate with NotifyIcon in the main form
+        // This will require passing a reference to the main form or using a singleton pattern
+        
         await Task.CompletedTask;
     }
-#endif
 
     /// <summary>
     /// Requests notification permissions from the user
     /// </summary>
     public async Task<bool> RequestNotificationPermissionAsync()
     {
-        try
-        {
-#if IOS
-            var center = UserNotifications.UNUserNotificationCenter.Current;
-            var (granted, error) = await center.RequestAuthorizationAsync(
-                UserNotifications.UNAuthorizationOptions.Alert | 
-                UserNotifications.UNAuthorizationOptions.Sound | 
-                UserNotifications.UNAuthorizationOptions.Badge);
-
-            return granted;
-#elif ANDROID
-            // Android notifications don't require explicit permission for normal notifications
-            // Starting from Android 13 (Tiramisu), POST_NOTIFICATIONS permission is needed
-            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
-            {
-                var context = Android.App.Application.Context;
-                var status = context.CheckSelfPermission(Android.Manifest.Permission.PostNotifications);
-                return status == Android.Content.PM.Permission.Granted;
-            }
-            return true;
-#else
-            return true;
-#endif
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to request notification permission");
-            return false;
-        }
+        // Windows doesn't require explicit notification permissions for desktop apps
+        return await Task.FromResult(true);
     }
 
     /// <summary>
@@ -213,26 +85,8 @@ public class NotificationService
     /// </summary>
     public async Task ClearAllNotificationsAsync()
     {
-        try
-        {
-#if ANDROID
-            var context = Android.App.Application.Context;
-            var notificationManager = context.GetSystemService(Android.App.Context.NotificationService) 
-                as Android.App.NotificationManager;
-            notificationManager?.CancelAll();
-#elif IOS
-            var center = UserNotifications.UNUserNotificationCenter.Current;
-            await center.RemoveAllPendingNotificationRequestsAsync();
-            await center.RemoveAllDeliveredNotificationsAsync();
-#elif WINDOWS
-            Windows.UI.Notifications.ToastNotificationManager.History.Clear();
-#endif
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to clear notifications");
-        }
-
+        // Windows doesn't have a built-in notification history for desktop apps
+        // This is a no-op for Windows Forms
         await Task.CompletedTask;
     }
 }
